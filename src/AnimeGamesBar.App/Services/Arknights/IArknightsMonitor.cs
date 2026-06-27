@@ -1,0 +1,16 @@
+using AnimeGamesBar.App.Models;
+using AnimeGamesBar.App.Services.Skland;
+
+namespace AnimeGamesBar.App.Services.Arknights;
+
+public interface IArknightsMonitor
+{
+    Task<IReadOnlyList<ArknightsPlayerBinding>> GetBindingsAsync(
+        SklandCredential credential,
+        CancellationToken cancellationToken);
+
+    Task<ArknightsAccountStatus> GetStatusAsync(
+        SklandCredential credential,
+        ArknightsPlayerBinding player,
+        CancellationToken cancellationToken);
+}

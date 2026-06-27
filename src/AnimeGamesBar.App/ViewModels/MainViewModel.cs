@@ -1,0 +1,345 @@
+using System.Collections.ObjectModel;
+using AnimeGamesBar.App.Models;
+using AnimeGamesBar.App.Services.Arknights;
+using AnimeGamesBar.App.Services.Skland;
+using Microsoft.UI.Xaml.Controls;
+
+namespace AnimeGamesBar.App.ViewModels;
+
+public sealed class MainViewModel : ObservableObject
+{
+    private readonly ICredentialStore _credentialStore;
+    private readonly IArknightsMonitor _monitor;
+    private readonly ISklandQrLoginService _qrLoginService;
+
+    private string _cred = string.Empty;
+    private string _token = string.Empty;
+    private string _cookie = string.Empty;
+    private string _deviceId = Guid.NewGuid().ToString("N");
+    private string _doctorName = "\u672A\u767B\u5F55";
+    private string _statusMessage = string.Empty;
+    private InfoBarSeverity _statusSeverity = InfoBarSeverity.Informational;
+    private ArknightsPlayerBinding? _selectedPlayerBinding;
+    private ArknightsAccountStatus? _snapshot;
+    private bool _autoRefreshEnabled;
+
+    public MainViewModel(
+        ICredentialStore credentialStore,
+        IArknightsMonitor monitor,
+        ISklandQrLoginService qrLoginService)
+    {
+        _credentialStore = credentialStore;
+        _monitor = monitor;
+        _qrLoginService = qrLoginService;
+
+        RefreshCommand = new AsyncCommand(RefreshAsync);
+        SaveCredentialCommand = new AsyncCommand(SaveCredentialAsync);
+        ClearCredentialCommand = new AsyncCommand(ClearCredentialAsync);
+        StartQrLoginCommand = new AsyncCommand(StartQrLoginAsync);
+
+        _ = InitializeAsync();
+    }
+
+    public ObservableCollection<ArknightsPlayerBinding> PlayerBindings { get; } = new();
+
+    public AsyncCommand RefreshCommand { get; }
+
+    public AsyncCommand SaveCredentialCommand { get; }
+
+    public AsyncCommand ClearCredentialCommand { get; }
+
+    public AsyncCommand StartQrLoginCommand { get; }
+
+    public string Cred
+    {
+        get => _cred;
+        set => SetProperty(ref _cred, value);
+    }
+
+    public string Token
+    {
+        get => _token;
+        set => SetProperty(ref _token, value);
+    }
+
+    public string Cookie
+    {
+        get => _cookie;
+        set => SetProperty(ref _cookie, value);
+    }
+
+    public string DeviceId
+    {
+        get => _deviceId;
+        set => SetProperty(ref _deviceId, value);
+    }
+
+    public ArknightsPlayerBinding? SelectedPlayerBinding
+    {
+        get => _selectedPlayerBinding;
+        set
+        {
+            if (SetProperty(ref _selectedPlayerBinding, value))
+            {
+                NotifyAccountChanged();
+            }
+        }
+    }
+
+    public bool AutoRefreshEnabled
+    {
+        get => _autoRefreshEnabled;
+        set => SetProperty(ref _autoRefreshEnabled, value);
+    }
+
+    public string DoctorName
+    {
+        get => _doctorName;
+        private set => SetProperty(ref _doctorName, value);
+    }
+
+    public string AccountBadgeText => SelectedPlayerBinding is null
+        ? "\u79BB\u7EBF"
+        : "\u5DF2\u7ED1\u5B9A";
+
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        private set
+        {
+            if (SetProperty(ref _statusMessage, value))
+            {
+                OnPropertyChanged(nameof(HasStatusMessage));
+            }
+        }
+    }
+
+    public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
+
+    public InfoBarSeverity StatusSeverity
+    {
+        get => _statusSeverity;
+        private set => SetProperty(ref _statusSeverity, value);
+    }
+
+    public int SanityValue => _snapshot?.Sanity.Current ?? 0;
+
+    public int SanityMax => Math.Max(_snapshot?.Sanity.Maximum ?? 1, 1);
+
+    public string SanityText => FormatMeter(_snapshot?.Sanity);
+
+    public string SanityRecoveryText => FormatFullAt(_snapshot?.Sanity.FullAt);
+
+    public int DroneValue => _snapshot?.Drones.Current ?? 0;
+
+    public int DroneMax => Math.Max(_snapshot?.Drones.Maximum ?? 1, 1);
+
+    public string DroneText => FormatMeter(_snapshot?.Drones);
+
+    public string DroneRecoveryText => FormatFullAt(_snapshot?.Drones.FullAt);
+
+    public string TrainingOperatorName => _snapshot?.TrainingRoom.OperatorName ?? "\u7A7A\u95F2";
+
+    public string TrainingSkillText
+    {
+        get
+        {
+            var training = _snapshot?.TrainingRoom;
+            if (training is null || !training.IsTraining)
+            {
+                return "-";
+            }
+
+            return training.TargetSkillLevel is null
+                ? training.SkillName
+                : $"{training.SkillName} -> {training.TargetSkillLevel}";
+        }
+    }
+
+    public string TrainingRemainingText => FormatRemaining(_snapshot?.TrainingRoom.CompleteAt);
+
+    public int AnnihilationValue => _snapshot?.Annihilation.Current ?? 0;
+
+    public int AnnihilationMax => _snapshot?.Annihilation.Maximum ?? 1800;
+
+    public string AnnihilationText => $"{AnnihilationValue}/{AnnihilationMax}";
+
+    public int SecurityServiceValue => _snapshot?.SecurityService.Current ?? 0;
+
+    public int SecurityServiceMax => _snapshot?.SecurityService.Maximum ?? 84;
+
+    public string SecurityServiceText => $"{SecurityServiceValue}/{SecurityServiceMax}";
+
+    private async Task InitializeAsync()
+    {
+        var credential = await _credentialStore.LoadAsync(CancellationToken.None);
+        if (credential is null)
+        {
+            SetStatus("\u672A\u627E\u5230\u672C\u5730\u51ED\u636E\u3002", InfoBarSeverity.Informational);
+            return;
+        }
+
+        ApplyCredential(credential);
+        SetStatus("\u5DF2\u52A0\u8F7D\u672C\u5730\u51ED\u636E\u3002", InfoBarSeverity.Success);
+    }
+
+    private async Task RefreshAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var credential = BuildCredential();
+            if (!credential.HasAnySecret)
+            {
+                SetStatus("\u7F3A\u5C11\u8D26\u53F7\u51ED\u636E\u3002", InfoBarSeverity.Warning);
+                return;
+            }
+
+            if (PlayerBindings.Count == 0)
+            {
+                var bindings = await _monitor.GetBindingsAsync(credential, cancellationToken);
+                PlayerBindings.Clear();
+                foreach (var binding in bindings)
+                {
+                    PlayerBindings.Add(binding);
+                }
+
+                SelectedPlayerBinding ??= PlayerBindings.FirstOrDefault();
+            }
+
+            if (SelectedPlayerBinding is null)
+            {
+                SetStatus("\u6CA1\u6709\u627E\u5230\u5DF2\u7ED1\u5B9A\u7684\u660E\u65E5\u65B9\u821F\u8D26\u53F7\u3002", InfoBarSeverity.Warning);
+                return;
+            }
+
+            _snapshot = await _monitor.GetStatusAsync(credential, SelectedPlayerBinding, cancellationToken);
+            DoctorName = _snapshot.DoctorName;
+            NotifySnapshotChanged();
+            SetStatus($"\u5DF2\u5237\u65B0\uFF1A{_snapshot.UpdatedAt:HH:mm:ss}", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    private async Task SaveCredentialAsync(CancellationToken cancellationToken)
+    {
+        await _credentialStore.SaveAsync(BuildCredential(), cancellationToken);
+        SetStatus("\u51ED\u636E\u5DF2\u4FDD\u5B58\u3002", InfoBarSeverity.Success);
+    }
+
+    private async Task ClearCredentialAsync(CancellationToken cancellationToken)
+    {
+        await _credentialStore.ClearAsync(cancellationToken);
+        ApplyCredential(SklandCredential.Empty);
+        PlayerBindings.Clear();
+        SelectedPlayerBinding = null;
+        _snapshot = null;
+        DoctorName = "\u672A\u767B\u5F55";
+        NotifySnapshotChanged();
+        SetStatus("\u672C\u5730\u51ED\u636E\u5DF2\u6E05\u9664\u3002", InfoBarSeverity.Success);
+    }
+
+    private async Task StartQrLoginAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _qrLoginService.StartAsync(cancellationToken);
+        }
+        catch (NotSupportedException ex)
+        {
+            SetStatus(ex.Message, InfoBarSeverity.Warning);
+        }
+    }
+
+    private SklandCredential BuildCredential()
+    {
+        return new SklandCredential(
+            Cred.Trim(),
+            Token.Trim(),
+            Cookie.Trim(),
+            string.IsNullOrWhiteSpace(DeviceId) ? Guid.NewGuid().ToString("N") : DeviceId.Trim(),
+            DateTimeOffset.Now);
+    }
+
+    private void ApplyCredential(SklandCredential credential)
+    {
+        Cred = credential.Cred;
+        Token = credential.Token;
+        Cookie = credential.Cookie;
+        DeviceId = string.IsNullOrWhiteSpace(credential.DeviceId)
+            ? Guid.NewGuid().ToString("N")
+            : credential.DeviceId;
+    }
+
+    private void SetStatus(string message, InfoBarSeverity severity)
+    {
+        StatusSeverity = severity;
+        StatusMessage = message;
+    }
+
+    private void NotifySnapshotChanged()
+    {
+        OnPropertyChanged(nameof(SanityValue));
+        OnPropertyChanged(nameof(SanityMax));
+        OnPropertyChanged(nameof(SanityText));
+        OnPropertyChanged(nameof(SanityRecoveryText));
+        OnPropertyChanged(nameof(DroneValue));
+        OnPropertyChanged(nameof(DroneMax));
+        OnPropertyChanged(nameof(DroneText));
+        OnPropertyChanged(nameof(DroneRecoveryText));
+        OnPropertyChanged(nameof(TrainingOperatorName));
+        OnPropertyChanged(nameof(TrainingSkillText));
+        OnPropertyChanged(nameof(TrainingRemainingText));
+        OnPropertyChanged(nameof(AnnihilationValue));
+        OnPropertyChanged(nameof(AnnihilationMax));
+        OnPropertyChanged(nameof(AnnihilationText));
+        OnPropertyChanged(nameof(SecurityServiceValue));
+        OnPropertyChanged(nameof(SecurityServiceMax));
+        OnPropertyChanged(nameof(SecurityServiceText));
+    }
+
+    private void NotifyAccountChanged()
+    {
+        OnPropertyChanged(nameof(AccountBadgeText));
+    }
+
+    private static string FormatMeter(ResourceMeter? meter)
+    {
+        return meter is null ? "0/0" : $"{meter.Current}/{meter.Maximum}";
+    }
+
+    private static string FormatFullAt(DateTimeOffset? fullAt)
+    {
+        if (fullAt is null)
+        {
+            return "\u6062\u590D\u65F6\u95F4\u672A\u77E5";
+        }
+
+        if (fullAt <= DateTimeOffset.Now)
+        {
+            return "\u5DF2\u6EE1";
+        }
+
+        return $"\u56DE\u6EE1 {fullAt:HH:mm}";
+    }
+
+    private static string FormatRemaining(DateTimeOffset? completeAt)
+    {
+        if (completeAt is null)
+        {
+            return "-";
+        }
+
+        var remaining = completeAt.Value - DateTimeOffset.Now;
+        if (remaining <= TimeSpan.Zero)
+        {
+            return "\u5DF2\u5B8C\u6210";
+        }
+
+        return remaining.TotalHours >= 1
+            ? $"{(int)remaining.TotalHours}h {remaining.Minutes}m"
+            : $"{remaining.Minutes}m";
+    }
+}
