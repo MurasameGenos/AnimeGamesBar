@@ -137,6 +137,12 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
 
     private static WutheringWavesResourceStatus ReadWeeklyVoyage(JsonElement root)
     {
+        var weeklyFrame = KuroClient.Get(root, "weeklyFrameData");
+        if (weeklyFrame.ValueKind == JsonValueKind.Object)
+        {
+            return ReadResource(root, "weeklyFrameData", "周度游历");
+        }
+
         var weeklyRouge = KuroClient.Get(root, "weeklyRougeData");
         if (weeklyRouge.ValueKind == JsonValueKind.Object)
         {
