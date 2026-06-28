@@ -267,7 +267,7 @@ public sealed class MainViewModel : ObservableObject
 
     public string TrainingRemainingText => FormatRemaining(_arknightsSnapshot?.TrainingRoom.CompleteAt);
 
-    public string TrainingCompleteAtText => FormatCompleteAt("\u5B8C\u6210", _arknightsSnapshot?.TrainingRoom.CompleteAt);
+    public string TrainingCompleteAtText => FormatCompleteAt(string.Empty, _arknightsSnapshot?.TrainingRoom.CompleteAt);
 
     public int OrderValue => _arknightsSnapshot?.Building.Orders.Current ?? 0;
 
@@ -832,7 +832,7 @@ public sealed class MainViewModel : ObservableObject
             return "\u5DF2\u6EE1";
         }
 
-        return $"{label} {completeAt:HH:mm} \u00B7 \u8FD8\u9700 {FormatDuration(completeAt.Value - DateTimeOffset.Now)}";
+        return $"{label} {FormatClockWithDay(completeAt.Value)} \u00B7 \u8FD8\u9700 {FormatDuration(completeAt.Value - DateTimeOffset.Now)}";
     }
 
     private static string FormatCompleteAt(string label, DateTimeOffset? completeAt)
@@ -847,7 +847,25 @@ public sealed class MainViewModel : ObservableObject
             return "\u5DF2\u5B8C\u6210";
         }
 
-        return $"{label} {completeAt:HH:mm}";
+        var timeText = FormatClockWithDay(completeAt.Value);
+        return string.IsNullOrWhiteSpace(label) ? timeText : $"{label} {timeText}";
+    }
+
+    private static string FormatClockWithDay(DateTimeOffset time)
+    {
+        var localTime = time.LocalDateTime;
+        var today = DateTime.Now.Date;
+        if (localTime.Date == today)
+        {
+            return localTime.ToString("HH:mm");
+        }
+
+        if (localTime.Date == today.AddDays(1))
+        {
+            return $"\u6B21\u65E5 {localTime:HH:mm}";
+        }
+
+        return localTime.ToString("MM-dd HH:mm");
     }
 
     private static string FormatRefreshAt(DateTimeOffset? refreshAt)
