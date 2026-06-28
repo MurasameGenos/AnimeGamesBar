@@ -174,6 +174,8 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    public int GameSelectorThumbColumn => _selectedGame == GameDashboardKind.Arknights ? 0 : 1;
+
     public Visibility ArknightsDashboardVisibility => _selectedGame == GameDashboardKind.Arknights
         ? Visibility.Visible
         : Visibility.Collapsed;
@@ -594,6 +596,7 @@ public sealed class MainViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsArknightsSelected));
         OnPropertyChanged(nameof(IsEndfieldSelected));
+        OnPropertyChanged(nameof(GameSelectorThumbColumn));
         OnPropertyChanged(nameof(ArknightsDashboardVisibility));
         OnPropertyChanged(nameof(EndfieldDashboardVisibility));
         OnPropertyChanged(nameof(SelectedGameTitle));
