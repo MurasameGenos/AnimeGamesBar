@@ -9,7 +9,6 @@ public sealed class SklandArknightsMonitor : IArknightsMonitor
     private const int WeeklyAnnihilationMaximum = 1800;
     private const int SecurityServiceDeviceMaximum = 24;
     private const int SecurityServiceStripMaximum = 60;
-    private const string ArknightsAppCode = "arknights";
 
     private readonly ISklandClient _client;
 
@@ -20,6 +19,7 @@ public sealed class SklandArknightsMonitor : IArknightsMonitor
 
     public async Task<ArknightsBindingResult> GetBindingsAsync(
         SklandCredential credential,
+        string appCode,
         CancellationToken cancellationToken)
     {
         var userId = await ResolveUserIdAsync(credential, cancellationToken) ?? credential.UserId;
@@ -31,7 +31,7 @@ public sealed class SklandArknightsMonitor : IArknightsMonitor
 
         SklandApiGuard.ThrowIfError(document.RootElement);
 
-        var bindings = ReadArknightsBindings(document.RootElement, userId);
+        var bindings = ReadGameBindings(document.RootElement, userId, appCode);
         return new ArknightsBindingResult(userId ?? string.Empty, bindings);
     }
 
@@ -61,6 +61,31 @@ public sealed class SklandArknightsMonitor : IArknightsMonitor
             UpdatedAt: DateTimeOffset.Now);
     }
 
+    public async Task<EndfieldAccountStatus> GetEndfieldStatusAsync(
+        SklandCredential credential,
+        ArknightsPlayerBinding player,
+        CancellationToken cancellationToken)
+    {
+        var userId = string.IsNullOrWhiteSpace(player.UserId) ? credential.UserId : player.UserId;
+        var serverId = FirstNotBlank(player.ChannelMasterId, player.ServerName, player.ChannelName) ?? string.Empty;
+        var path = "/web/v1/game/endfield/card/detail" +
+            $"?roleId={Uri.EscapeDataString(player.Uid)}" +
+            $"&serverId={Uri.EscapeDataString(serverId)}" +
+            $"&userId={Uri.EscapeDataString(userId ?? string.Empty)}";
+
+        using var document = await _client.GetJsonAsync(credential, path, cancellationToken);
+
+        SklandApiGuard.ThrowIfError(document.RootElement);
+
+        var detail = JsonElementNavigator.Get(document.RootElement, "data", "detail");
+        if (detail.ValueKind == JsonValueKind.Undefined)
+        {
+            detail = JsonElementNavigator.Get(document.RootElement, "data");
+        }
+
+        return new SklandEndfieldStatusMapper().ReadStatus(detail, player, DateTimeOffset.Now);
+    }
+
     private async Task<string?> ResolveUserIdAsync(SklandCredential credential, CancellationToken cancellationToken)
     {
         try
@@ -85,7 +110,7 @@ public sealed class SklandArknightsMonitor : IArknightsMonitor
         }
     }
 
-    private static IReadOnlyList<ArknightsPlayerBinding> ReadArknightsBindings(JsonElement root, string? userId)
+    private static IReadOnlyList<ArknightsPlayerBinding> ReadGameBindings(JsonElement root, string? userId, string appCodeFilter)
     {
         var data = JsonElementNavigator.Get(root, "data");
         var list = JsonElementNavigator.Get(data, "list");
@@ -99,7 +124,7 @@ public sealed class SklandArknightsMonitor : IArknightsMonitor
         foreach (var app in list.EnumerateArray())
         {
             var appCode = JsonElementNavigator.ReadString(app, "appCode");
-            if (!string.Equals(appCode, ArknightsAppCode, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(appCode, appCodeFilter, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -113,7 +138,7 @@ public sealed class SklandArknightsMonitor : IArknightsMonitor
 
             foreach (var player in bindingList.EnumerateArray())
             {
-                TryAddBinding(bindings, player, userId ?? string.Empty, defaultUid);
+                TryAddBinding(bindings, player, userId ?? string.Empty, defaultUid, appCode ?? appCodeFilter);
             }
         }
 
@@ -127,7 +152,8 @@ public sealed class SklandArknightsMonitor : IArknightsMonitor
         List<ArknightsPlayerBinding> bindings,
         JsonElement player,
         string userId,
-        string? defaultUid)
+        string? defaultUid,
+        string appCode)
     {
         if (!JsonElementNavigator.TryReadString(player, out var uid, "uid") ||
             !JsonElementNavigator.TryReadString(player, out var nickName, "nickName", "nickname", "name"))
@@ -136,8 +162,9 @@ public sealed class SklandArknightsMonitor : IArknightsMonitor
         }
 
         var channelName = JsonElementNavigator.ReadString(player, "channelName", "channel") ?? "官服";
-        var serverName = JsonElementNavigator.ReadString(player, "serverName", "server", "channelMasterId") ?? string.Empty;
-        var binding = new ArknightsPlayerBinding(uid, userId, nickName, channelName, serverName);
+        var channelMasterId = JsonElementNavigator.ReadString(player, "channelMasterId", "serverId") ?? string.Empty;
+        var serverName = JsonElementNavigator.ReadString(player, "serverName", "server") ?? channelMasterId;
+        var binding = new ArknightsPlayerBinding(uid, userId, nickName, channelName, serverName, channelMasterId, appCode);
 
         if (uid == defaultUid)
         {

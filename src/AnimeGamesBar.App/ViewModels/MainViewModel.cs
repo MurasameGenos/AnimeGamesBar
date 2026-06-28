@@ -9,9 +9,14 @@ namespace AnimeGamesBar.App.ViewModels;
 
 public sealed class MainViewModel : ObservableObject
 {
+    private const string ArknightsAppCode = "arknights";
+    private const string EndfieldAppCode = "endfield";
+
     private readonly ICredentialStore _credentialStore;
     private readonly IArknightsMonitor _monitor;
     private readonly ISklandLoginService _loginService;
+    private readonly List<ArknightsPlayerBinding> _arknightsBindings = new();
+    private readonly List<ArknightsPlayerBinding> _endfieldBindings = new();
 
     private string _cred = string.Empty;
     private string _token = string.Empty;
@@ -22,7 +27,9 @@ public sealed class MainViewModel : ObservableObject
     private string _statusMessage = string.Empty;
     private InfoBarSeverity _statusSeverity = InfoBarSeverity.Informational;
     private ArknightsPlayerBinding? _selectedPlayerBinding;
-    private ArknightsAccountStatus? _snapshot;
+    private ArknightsAccountStatus? _arknightsSnapshot;
+    private EndfieldAccountStatus? _endfieldSnapshot;
+    private GameDashboardKind _selectedGame = GameDashboardKind.Arknights;
     private bool _autoRefreshEnabled;
     private double _autoRefreshIntervalMinutes = 5;
 
@@ -39,6 +46,16 @@ public sealed class MainViewModel : ObservableObject
         SaveCredentialCommand = new AsyncCommand(SaveCredentialAsync);
         ClearCredentialCommand = new AsyncCommand(ClearCredentialAsync);
         StartLoginCommand = new AsyncCommand(StartLoginAsync);
+        SelectArknightsCommand = new AsyncCommand(_ =>
+        {
+            SelectGame(GameDashboardKind.Arknights);
+            return Task.CompletedTask;
+        });
+        SelectEndfieldCommand = new AsyncCommand(_ =>
+        {
+            SelectGame(GameDashboardKind.Endfield);
+            return Task.CompletedTask;
+        });
 
         _ = InitializeAsync();
     }
@@ -56,6 +73,10 @@ public sealed class MainViewModel : ObservableObject
     public AsyncCommand ClearCredentialCommand { get; }
 
     public AsyncCommand StartLoginCommand { get; }
+
+    public AsyncCommand SelectArknightsCommand { get; }
+
+    public AsyncCommand SelectEndfieldCommand { get; }
 
     public string Cred
     {
@@ -94,6 +115,7 @@ public sealed class MainViewModel : ObservableObject
         {
             if (SetProperty(ref _selectedPlayerBinding, value))
             {
+                UpdateHeaderName();
                 NotifyAccountChanged();
             }
         }
@@ -128,6 +150,46 @@ public sealed class MainViewModel : ObservableObject
         ? $"\u6BCF {AutoRefreshIntervalMinutes:0} \u5206\u949F\u5237\u65B0"
         : "\u81EA\u52A8\u5237\u65B0\u5DF2\u5173\u95ED";
 
+    public bool IsArknightsSelected
+    {
+        get => _selectedGame == GameDashboardKind.Arknights;
+        set
+        {
+            if (value)
+            {
+                SelectGame(GameDashboardKind.Arknights);
+            }
+        }
+    }
+
+    public bool IsEndfieldSelected
+    {
+        get => _selectedGame == GameDashboardKind.Endfield;
+        set
+        {
+            if (value)
+            {
+                SelectGame(GameDashboardKind.Endfield);
+            }
+        }
+    }
+
+    public Visibility ArknightsDashboardVisibility => _selectedGame == GameDashboardKind.Arknights
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+    public Visibility EndfieldDashboardVisibility => _selectedGame == GameDashboardKind.Endfield
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+    public string SelectedGameTitle => _selectedGame == GameDashboardKind.Arknights
+        ? "\u660E\u65E5\u65B9\u821F"
+        : "\u660E\u65E5\u65B9\u821F\uFF1A\u7EC8\u672B\u5730";
+
+    public string AccountPanelSubtitle => _selectedGame == GameDashboardKind.Arknights
+        ? "\u7F57\u5FB7\u5C9B\u8D26\u53F7\u4E0E\u5237\u65B0\u8BBE\u7F6E"
+        : "\u7EC8\u672B\u5730\u8D26\u53F7\u4E0E\u5237\u65B0\u8BBE\u7F6E";
+
     public string DoctorName
     {
         get => _doctorName;
@@ -158,29 +220,29 @@ public sealed class MainViewModel : ObservableObject
         private set => SetProperty(ref _statusSeverity, value);
     }
 
-    public int SanityValue => _snapshot?.Sanity.Current ?? 0;
+    public int SanityValue => _arknightsSnapshot?.Sanity.Current ?? 0;
 
-    public int SanityMax => Math.Max(_snapshot?.Sanity.Maximum ?? 1, 1);
+    public int SanityMax => Math.Max(_arknightsSnapshot?.Sanity.Maximum ?? 1, 1);
 
-    public string SanityText => FormatMeter(_snapshot?.Sanity);
+    public string SanityText => FormatMeter(_arknightsSnapshot?.Sanity);
 
-    public string SanityRecoveryText => FormatCompletion("\u56DE\u6EE1", _snapshot?.Sanity.FullAt);
+    public string SanityRecoveryText => FormatCompletion("\u56DE\u6EE1", _arknightsSnapshot?.Sanity.FullAt);
 
-    public int DroneValue => _snapshot?.Drones.Current ?? 0;
+    public int DroneValue => _arknightsSnapshot?.Drones.Current ?? 0;
 
-    public int DroneMax => Math.Max(_snapshot?.Drones.Maximum ?? 1, 1);
+    public int DroneMax => Math.Max(_arknightsSnapshot?.Drones.Maximum ?? 1, 1);
 
-    public string DroneText => FormatMeter(_snapshot?.Drones);
+    public string DroneText => FormatMeter(_arknightsSnapshot?.Drones);
 
-    public string DroneRecoveryText => FormatCompletion("\u56DE\u6EE1", _snapshot?.Drones.FullAt);
+    public string DroneRecoveryText => FormatCompletion("\u56DE\u6EE1", _arknightsSnapshot?.Drones.FullAt);
 
-    public string TrainingOperatorName => _snapshot?.TrainingRoom.OperatorName ?? "\u7A7A\u95F2";
+    public string TrainingOperatorName => _arknightsSnapshot?.TrainingRoom.OperatorName ?? "\u7A7A\u95F2";
 
     public string TrainingSkillText
     {
         get
         {
-            var training = _snapshot?.TrainingRoom;
+            var training = _arknightsSnapshot?.TrainingRoom;
             if (training is null || !training.IsTraining)
             {
                 return "-";
@@ -192,50 +254,76 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    public string TrainingRemainingText => FormatRemaining(_snapshot?.TrainingRoom.CompleteAt);
+    public string TrainingRemainingText => FormatRemaining(_arknightsSnapshot?.TrainingRoom.CompleteAt);
 
-    public string TrainingCompleteAtText => FormatCompleteAt("\u5B8C\u6210", _snapshot?.TrainingRoom.CompleteAt);
+    public string TrainingCompleteAtText => FormatCompleteAt("\u5B8C\u6210", _arknightsSnapshot?.TrainingRoom.CompleteAt);
 
-    public int OrderValue => _snapshot?.Building.Orders.Current ?? 0;
+    public int OrderValue => _arknightsSnapshot?.Building.Orders.Current ?? 0;
 
-    public int OrderMax => Math.Max(_snapshot?.Building.Orders.Maximum ?? 1, 1);
+    public int OrderMax => Math.Max(_arknightsSnapshot?.Building.Orders.Maximum ?? 1, 1);
 
-    public string OrderText => FormatProgress(_snapshot?.Building.Orders);
+    public string OrderText => FormatProgress(_arknightsSnapshot?.Building.Orders);
 
-    public string OrderCompletionText => FormatCompleteAt("\u4E0B\u4E00\u5355", _snapshot?.Building.Orders.CompleteAt);
+    public string OrderCompletionText => FormatCompleteAt("\u4E0B\u4E00\u5355", _arknightsSnapshot?.Building.Orders.CompleteAt);
 
-    public int ManufactureValue => _snapshot?.Building.Manufacture.Current ?? 0;
+    public int ManufactureValue => _arknightsSnapshot?.Building.Manufacture.Current ?? 0;
 
-    public int ManufactureMax => Math.Max(_snapshot?.Building.Manufacture.Maximum ?? 1, 1);
+    public int ManufactureMax => Math.Max(_arknightsSnapshot?.Building.Manufacture.Maximum ?? 1, 1);
 
-    public string ManufactureText => FormatProgress(_snapshot?.Building.Manufacture);
+    public string ManufactureText => FormatProgress(_arknightsSnapshot?.Building.Manufacture);
 
-    public string ManufactureCompletionText => FormatCompleteAt("\u4E0B\u4E00\u4EF6", _snapshot?.Building.Manufacture.CompleteAt);
+    public string ManufactureCompletionText => FormatCompleteAt("\u4E0B\u4E00\u4EF6", _arknightsSnapshot?.Building.Manufacture.CompleteAt);
 
-    public string TiredOperatorsText => $"{_snapshot?.Building.TiredOperators ?? 0}";
+    public string TiredOperatorsText => $"{_arknightsSnapshot?.Building.TiredOperators ?? 0}";
 
-    public int AnnihilationValue => _snapshot?.Annihilation.Current ?? 0;
+    public int AnnihilationValue => _arknightsSnapshot?.Annihilation.Current ?? 0;
 
-    public int AnnihilationMax => _snapshot?.Annihilation.Maximum ?? 1800;
+    public int AnnihilationMax => _arknightsSnapshot?.Annihilation.Maximum ?? 1800;
 
     public string AnnihilationText => $"{AnnihilationValue}/{AnnihilationMax}";
 
-    public string AnnihilationRefreshText => FormatRefreshAt(_snapshot?.Annihilation.RefreshAt);
+    public string AnnihilationRefreshText => FormatRefreshAt(_arknightsSnapshot?.Annihilation.RefreshAt);
 
-    public int SecurityServiceValue => _snapshot?.SecurityService.Current ?? 0;
+    public int SecurityServiceValue => _arknightsSnapshot?.SecurityService.Current ?? 0;
 
-    public int SecurityServiceMax => _snapshot?.SecurityService.Maximum ?? 24;
+    public int SecurityServiceMax => _arknightsSnapshot?.SecurityService.Maximum ?? 24;
 
     public string SecurityServiceText => $"{SecurityServiceValue}/{SecurityServiceMax}";
 
-    public int SecurityServiceStripValue => _snapshot?.SecurityServiceStrips.Current ?? 0;
+    public int SecurityServiceStripValue => _arknightsSnapshot?.SecurityServiceStrips.Current ?? 0;
 
-    public int SecurityServiceStripMax => _snapshot?.SecurityServiceStrips.Maximum ?? 60;
+    public int SecurityServiceStripMax => _arknightsSnapshot?.SecurityServiceStrips.Maximum ?? 60;
 
     public string SecurityServiceStripText => $"{SecurityServiceStripValue}/{SecurityServiceStripMax}";
 
     public string SecurityServiceRefreshText => FormatRefreshAt(
-        _snapshot?.SecurityService.RefreshAt ?? _snapshot?.SecurityServiceStrips.RefreshAt);
+        _arknightsSnapshot?.SecurityService.RefreshAt ?? _arknightsSnapshot?.SecurityServiceStrips.RefreshAt);
+
+    public int EndfieldSanityValue => _endfieldSnapshot?.Sanity.Current ?? 0;
+
+    public int EndfieldSanityMax => Math.Max(_endfieldSnapshot?.Sanity.Maximum ?? 1, 1);
+
+    public string EndfieldSanityText => FormatMeter(_endfieldSnapshot?.Sanity);
+
+    public string EndfieldSanityRecoveryText => FormatCompletion("\u56DE\u6EE1", _endfieldSnapshot?.Sanity.FullAt);
+
+    public int EndfieldDailyActivityValue => _endfieldSnapshot?.DailyActivity.Current ?? 0;
+
+    public int EndfieldDailyActivityMax => Math.Max(_endfieldSnapshot?.DailyActivity.Maximum ?? 1, 1);
+
+    public string EndfieldDailyActivityText => FormatProgress(_endfieldSnapshot?.DailyActivity);
+
+    public int EndfieldWeeklyTasksValue => _endfieldSnapshot?.WeeklyTasks.Current ?? 0;
+
+    public int EndfieldWeeklyTasksMax => Math.Max(_endfieldSnapshot?.WeeklyTasks.Maximum ?? 1, 1);
+
+    public string EndfieldWeeklyTasksText => FormatProgress(_endfieldSnapshot?.WeeklyTasks);
+
+    public int EndfieldPassLevelValue => _endfieldSnapshot?.PassLevel.Current ?? 0;
+
+    public int EndfieldPassLevelMax => Math.Max(_endfieldSnapshot?.PassLevel.Maximum ?? 1, 1);
+
+    public string EndfieldPassLevelText => FormatProgress(_endfieldSnapshot?.PassLevel);
 
     private async Task InitializeAsync()
     {
@@ -261,36 +349,30 @@ public sealed class MainViewModel : ObservableObject
                 return;
             }
 
-            if (PlayerBindings.Count == 0)
-            {
-                var bindingResult = await _monitor.GetBindingsAsync(credential, cancellationToken);
-                if (!string.IsNullOrWhiteSpace(bindingResult.ResolvedUserId) &&
-                    !string.Equals(UserId, bindingResult.ResolvedUserId, StringComparison.Ordinal))
-                {
-                    UserId = bindingResult.ResolvedUserId;
-                    credential = BuildCredential();
-                    await _credentialStore.SaveAsync(credential, cancellationToken);
-                }
-
-                PlayerBindings.Clear();
-                foreach (var binding in bindingResult.Bindings)
-                {
-                    PlayerBindings.Add(binding);
-                }
-
-                SelectedPlayerBinding ??= PlayerBindings.FirstOrDefault();
-            }
+            await EnsureBindingsAsync(credential, cancellationToken);
+            credential = BuildCredential();
 
             if (SelectedPlayerBinding is null)
             {
-                SetStatus("\u6CA1\u6709\u627E\u5230\u5DF2\u7ED1\u5B9A\u7684\u660E\u65E5\u65B9\u821F\u8D26\u53F7\u3002", InfoBarSeverity.Warning);
+                SetStatus($"\u6CA1\u6709\u627E\u5230\u5DF2\u7ED1\u5B9A\u7684{SelectedGameTitle}\u8D26\u53F7\u3002", InfoBarSeverity.Warning);
                 return;
             }
 
-            _snapshot = await _monitor.GetStatusAsync(credential, SelectedPlayerBinding, cancellationToken);
-            DoctorName = _snapshot.DoctorName;
+            DateTimeOffset updatedAt;
+            if (_selectedGame == GameDashboardKind.Arknights)
+            {
+                _arknightsSnapshot = await _monitor.GetStatusAsync(credential, SelectedPlayerBinding, cancellationToken);
+                updatedAt = _arknightsSnapshot.UpdatedAt;
+            }
+            else
+            {
+                _endfieldSnapshot = await _monitor.GetEndfieldStatusAsync(credential, SelectedPlayerBinding, cancellationToken);
+                updatedAt = _endfieldSnapshot.UpdatedAt;
+            }
+
+            UpdateHeaderName();
             NotifySnapshotChanged();
-            SetStatus($"\u5DF2\u5237\u65B0\uFF1A{_snapshot.UpdatedAt:HH:mm:ss}", InfoBarSeverity.Success);
+            SetStatus($"\u5DF2\u5237\u65B0\uFF1A{updatedAt:HH:mm:ss}", InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {
@@ -304,13 +386,37 @@ public sealed class MainViewModel : ObservableObject
         SetStatus("\u51ED\u636E\u5DF2\u4FDD\u5B58\u3002", InfoBarSeverity.Success);
     }
 
+    private async Task EnsureBindingsAsync(SklandCredential credential, CancellationToken cancellationToken)
+    {
+        var target = CurrentBindingCache();
+        if (target.Count == 0)
+        {
+            var bindingResult = await _monitor.GetBindingsAsync(credential, CurrentAppCode(), cancellationToken);
+            if (!string.IsNullOrWhiteSpace(bindingResult.ResolvedUserId) &&
+                !string.Equals(UserId, bindingResult.ResolvedUserId, StringComparison.Ordinal))
+            {
+                UserId = bindingResult.ResolvedUserId;
+                credential = BuildCredential();
+                await _credentialStore.SaveAsync(credential, cancellationToken);
+            }
+
+            target.Clear();
+            target.AddRange(bindingResult.Bindings);
+        }
+
+        SyncDisplayedBindings();
+    }
+
     private async Task ClearCredentialAsync(CancellationToken cancellationToken)
     {
         await _credentialStore.ClearAsync(cancellationToken);
         ApplyCredential(SklandCredential.Empty);
+        _arknightsBindings.Clear();
+        _endfieldBindings.Clear();
         PlayerBindings.Clear();
         SelectedPlayerBinding = null;
-        _snapshot = null;
+        _arknightsSnapshot = null;
+        _endfieldSnapshot = null;
         DoctorName = "\u672A\u767B\u5F55";
         NotifySnapshotChanged();
         SetStatus("\u672C\u5730\u51ED\u636E\u5DF2\u6E05\u9664\u3002", InfoBarSeverity.Success);
@@ -335,9 +441,12 @@ public sealed class MainViewModel : ObservableObject
 
             ApplyCredential(credential);
             await _credentialStore.SaveAsync(credential, cancellationToken);
+            _arknightsBindings.Clear();
+            _endfieldBindings.Clear();
             PlayerBindings.Clear();
             SelectedPlayerBinding = null;
-            _snapshot = null;
+            _arknightsSnapshot = null;
+            _endfieldSnapshot = null;
             NotifySnapshotChanged();
             SetStatus("\u767B\u5F55\u51ED\u636E\u5DF2\u4FDD\u5B58\uFF0C\u6B63\u5728\u9A8C\u8BC1\u6570\u636E\u6293\u53D6\u3002", InfoBarSeverity.Success);
             await RefreshAsync(cancellationToken);
@@ -371,6 +480,55 @@ public sealed class MainViewModel : ObservableObject
         CredentialApplied?.Invoke(this, EventArgs.Empty);
     }
 
+    private void SelectGame(GameDashboardKind game)
+    {
+        if (_selectedGame == game)
+        {
+            return;
+        }
+
+        _selectedGame = game;
+        SyncDisplayedBindings();
+        UpdateHeaderName();
+        NotifyGameChanged();
+        NotifySnapshotChanged();
+    }
+
+    private string CurrentAppCode()
+    {
+        return _selectedGame == GameDashboardKind.Arknights ? ArknightsAppCode : EndfieldAppCode;
+    }
+
+    private List<ArknightsPlayerBinding> CurrentBindingCache()
+    {
+        return _selectedGame == GameDashboardKind.Arknights ? _arknightsBindings : _endfieldBindings;
+    }
+
+    private void SyncDisplayedBindings()
+    {
+        var currentUid = SelectedPlayerBinding?.Uid;
+        var bindings = CurrentBindingCache();
+
+        PlayerBindings.Clear();
+        foreach (var binding in bindings)
+        {
+            PlayerBindings.Add(binding);
+        }
+
+        SelectedPlayerBinding = PlayerBindings.FirstOrDefault(binding => binding.Uid == currentUid) ??
+            PlayerBindings.FirstOrDefault();
+    }
+
+    private void UpdateHeaderName()
+    {
+        DoctorName = _selectedGame switch
+        {
+            GameDashboardKind.Arknights => _arknightsSnapshot?.DoctorName ?? SelectedPlayerBinding?.NickName ?? "\u672A\u767B\u5F55",
+            GameDashboardKind.Endfield => _endfieldSnapshot?.PlayerName ?? SelectedPlayerBinding?.NickName ?? "\u672A\u767B\u5F55",
+            _ => "\u672A\u767B\u5F55"
+        };
+    }
+
     private void SetStatus(string message, InfoBarSeverity severity)
     {
         StatusSeverity = severity;
@@ -379,6 +537,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void NotifySnapshotChanged()
     {
+        OnPropertyChanged(nameof(DoctorName));
         OnPropertyChanged(nameof(SanityValue));
         OnPropertyChanged(nameof(SanityMax));
         OnPropertyChanged(nameof(SanityText));
@@ -411,10 +570,34 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(SecurityServiceStripMax));
         OnPropertyChanged(nameof(SecurityServiceStripText));
         OnPropertyChanged(nameof(SecurityServiceRefreshText));
+        OnPropertyChanged(nameof(EndfieldSanityValue));
+        OnPropertyChanged(nameof(EndfieldSanityMax));
+        OnPropertyChanged(nameof(EndfieldSanityText));
+        OnPropertyChanged(nameof(EndfieldSanityRecoveryText));
+        OnPropertyChanged(nameof(EndfieldDailyActivityValue));
+        OnPropertyChanged(nameof(EndfieldDailyActivityMax));
+        OnPropertyChanged(nameof(EndfieldDailyActivityText));
+        OnPropertyChanged(nameof(EndfieldWeeklyTasksValue));
+        OnPropertyChanged(nameof(EndfieldWeeklyTasksMax));
+        OnPropertyChanged(nameof(EndfieldWeeklyTasksText));
+        OnPropertyChanged(nameof(EndfieldPassLevelValue));
+        OnPropertyChanged(nameof(EndfieldPassLevelMax));
+        OnPropertyChanged(nameof(EndfieldPassLevelText));
     }
 
     private void NotifyAccountChanged()
     {
+        OnPropertyChanged(nameof(AccountBadgeText));
+    }
+
+    private void NotifyGameChanged()
+    {
+        OnPropertyChanged(nameof(IsArknightsSelected));
+        OnPropertyChanged(nameof(IsEndfieldSelected));
+        OnPropertyChanged(nameof(ArknightsDashboardVisibility));
+        OnPropertyChanged(nameof(EndfieldDashboardVisibility));
+        OnPropertyChanged(nameof(SelectedGameTitle));
+        OnPropertyChanged(nameof(AccountPanelSubtitle));
         OnPropertyChanged(nameof(AccountBadgeText));
     }
 

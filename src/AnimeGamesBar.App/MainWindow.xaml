@@ -65,9 +65,17 @@
                 Grid.Column="1"
                 VerticalAlignment="Center"
                 Orientation="Horizontal"
-                Spacing="22">
-                <TextBlock Foreground="{StaticResource AppMutedTextBrush}" Text="Arknights" />
-                <TextBlock Foreground="{StaticResource AppMutedTextBrush}" Text="Skland" />
+                Spacing="18">
+                <RadioButton
+                    Command="{Binding SelectArknightsCommand}"
+                    Content="&#x660E;&#x65E5;&#x65B9;&#x821F;"
+                    GroupName="GameSelector"
+                    IsChecked="{Binding IsArknightsSelected, Mode=TwoWay}" />
+                <RadioButton
+                    Command="{Binding SelectEndfieldCommand}"
+                    Content="&#x7EC8;&#x672B;&#x5730;"
+                    GroupName="GameSelector"
+                    IsChecked="{Binding IsEndfieldSelected, Mode=TwoWay}" />
                 <TextBlock Foreground="{StaticResource AppMutedTextBrush}" Text="{Binding AutoRefreshSummary}" />
             </StackPanel>
 
@@ -147,10 +155,10 @@
                             FontSize="20"
                             FontWeight="SemiBold"
                             Foreground="{StaticResource AppTextBrush}"
-                            Text="&#x660E;&#x65E5;&#x65B9;&#x821F;" />
+                            Text="{Binding SelectedGameTitle}" />
                         <TextBlock
                             Style="{StaticResource MutedTextStyle}"
-                            Text="&#x8D26;&#x53F7;&#x4E0E;&#x5237;&#x65B0;&#x8BBE;&#x7F6E;" />
+                            Text="{Binding AccountPanelSubtitle}" />
 
                         <ComboBox
                             Header="&#x8D26;&#x53F7;"
@@ -247,7 +255,10 @@
                     </StackPanel>
                 </Border>
 
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer
+                    Grid.Row="1"
+                    VerticalScrollBarVisibility="Auto"
+                    Visibility="{Binding ArknightsDashboardVisibility}">
                     <Grid ColumnSpacing="16" RowSpacing="16">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -405,6 +416,86 @@
                                     </StackPanel>
                                 </Grid>
                                 <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding SecurityServiceRefreshText}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+
+                <ScrollViewer
+                    Grid.Row="1"
+                    VerticalScrollBarVisibility="Auto"
+                    Visibility="{Binding EndfieldDashboardVisibility}">
+                    <Grid ColumnSpacing="16" RowSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Border
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x7406;&#x667A;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding EndfieldSanityText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding EndfieldSanityMax}" Value="{Binding EndfieldSanityValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding EndfieldSanityRecoveryText}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x6BCF;&#x65E5;&#x6D3B;&#x8DC3;&#x5EA6;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding EndfieldDailyActivityText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding EndfieldDailyActivityMax}" Value="{Binding EndfieldDailyActivityValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="Daily Mission" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x6BCF;&#x5468;&#x4E8B;&#x52A1;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding EndfieldWeeklyTasksText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding EndfieldWeeklyTasksMax}" Value="{Binding EndfieldWeeklyTasksValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="Weekly Mission" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x901A;&#x884C;&#x8BC1;&#x7B49;&#x7EA7;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding EndfieldPassLevelText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding EndfieldPassLevelMax}" Value="{Binding EndfieldPassLevelValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="Battle Pass" />
                             </StackPanel>
                         </Border>
                     </Grid>

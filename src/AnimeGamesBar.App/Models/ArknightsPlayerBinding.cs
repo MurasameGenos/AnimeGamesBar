@@ -5,7 +5,9 @@ public sealed record ArknightsPlayerBinding(
     string UserId,
     string NickName,
     string ChannelName,
-    string ServerName)
+    string ServerName,
+    string ChannelMasterId = "",
+    string AppCode = "arknights")
 {
     public string DisplayName => string.IsNullOrWhiteSpace(ServerName)
         ? $"{NickName} ({Uid})"

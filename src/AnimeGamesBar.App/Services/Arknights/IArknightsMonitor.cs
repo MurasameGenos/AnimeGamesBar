@@ -7,9 +7,15 @@ public interface IArknightsMonitor
 {
     Task<ArknightsBindingResult> GetBindingsAsync(
         SklandCredential credential,
+        string appCode,
         CancellationToken cancellationToken);
 
     Task<ArknightsAccountStatus> GetStatusAsync(
+        SklandCredential credential,
+        ArknightsPlayerBinding player,
+        CancellationToken cancellationToken);
+
+    Task<EndfieldAccountStatus> GetEndfieldStatusAsync(
         SklandCredential credential,
         ArknightsPlayerBinding player,
         CancellationToken cancellationToken);
