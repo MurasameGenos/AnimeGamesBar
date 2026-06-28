@@ -5,6 +5,7 @@ using AnimeGamesBar.App.Services.Notifications;
 using AnimeGamesBar.App.Services.Settings;
 using AnimeGamesBar.App.Services.Skland;
 using AnimeGamesBar.App.Services.Startup;
+using AnimeGamesBar.App.Services.Tajiduo;
 using AnimeGamesBar.App.ViewModels;
 using Microsoft.UI.Xaml;
 using System.Net;
@@ -36,6 +37,10 @@ public partial class App : Application
         var kuroSignIn = new KuroSignInService(kuroClient);
         var kuroMobileLoginClient = new KuroMobileLoginClient(httpClient);
         var kuroLogin = new KuroLoginService(kuroMobileLoginClient);
+        var tajiduoClient = new TajiduoClient(httpClient);
+        var tajiduoMonitor = new TajiduoYihuanMonitor(tajiduoClient);
+        var tajiduoSignIn = new TajiduoSignInService(tajiduoClient);
+        var tajiduoLogin = new TajiduoLoginService(tajiduoClient);
         var settingsStore = new JsonSettingsStore();
         var notificationService = new WindowsAppNotificationService();
         var startupService = new RegistryStartupService();
@@ -49,6 +54,9 @@ public partial class App : Application
             kuroMonitor,
             kuroSignIn,
             kuroLogin,
+            tajiduoMonitor,
+            tajiduoSignIn,
+            tajiduoLogin,
             settingsStore,
             notificationService,
             startupService);

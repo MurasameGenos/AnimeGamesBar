@@ -68,7 +68,7 @@
                 Orientation="Horizontal"
                 Spacing="16">
                 <Border
-                    Width="330"
+                    Width="440"
                     Height="34"
                     Background="{StaticResource AppButtonBrush}"
                     BorderBrush="{StaticResource AppBorderBrush}"
@@ -76,6 +76,7 @@
                     CornerRadius="4">
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
@@ -133,6 +134,22 @@
                             <TextBlock
                                 HorizontalAlignment="Center"
                                 Text="&#x9E23;&#x6F6E;" />
+                        </Button>
+
+                        <Button
+                            Grid.Column="3"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Padding="0"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Command="{Binding SelectYihuanCommand}"
+                            Foreground="{StaticResource AppTextBrush}">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                Text="&#x5F02;&#x73AF;" />
                         </Button>
                     </Grid>
                 </Border>
@@ -743,6 +760,86 @@
                                 <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x7EC8;&#x7109;&#x77E9;&#x9635;" />
                                 <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource AppTextBrush}" Text="{Binding WutheringFinalBattleEndText}" />
                                 <TextBlock Style="{StaticResource MutedTextStyle}" Text="&#x7ED3;&#x675F;&#x65F6;&#x95F4;" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+
+                <ScrollViewer
+                    Grid.Row="1"
+                    VerticalScrollBarVisibility="Auto"
+                    Visibility="{Binding YihuanDashboardVisibility}">
+                    <Grid ColumnSpacing="16" RowSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Border
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x672C;&#x6027;&#x50CF;&#x7D20;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding YihuanNaturePixelsText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding YihuanNaturePixelsMax}" Value="{Binding YihuanNaturePixelsValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding YihuanSignInText}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x90FD;&#x5E02;&#x6D3B;&#x529B;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding YihuanCityVitalityText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding YihuanCityVitalityMax}" Value="{Binding YihuanCityVitalityValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="City Vitality" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x6D3B;&#x8DC3;&#x5EA6;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding YihuanDailyActivityText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding YihuanDailyActivityMax}" Value="{Binding YihuanDailyActivityValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="Daily Activity" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x5468;&#x672C;&#x6B21;&#x6570;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding YihuanWeeklyBossText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding YihuanWeeklyBossMax}" Value="{Binding YihuanWeeklyBossValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="Weekly Boss" />
                             </StackPanel>
                         </Border>
                     </Grid>

@@ -1,12 +1,14 @@
 # AnimeGames Bar
 
-AnimeGames Bar 是一个 WinUI 3 桌面状态栏，用来集中查看常用二游账号状态、自动刷新数据，并在启动时执行每日签到。
+AnimeGames Bar 是一个 WinUI 3 桌面状态栏，用来集中查看常用二游账号状态、自动刷新数据，并按设置执行每日签到。
 
 ## 当前版本
 
-- 当前开发版本：v1.1
+- 当前开发版本：v1.2
 - v1.0 稳定点：明日方舟、明日方舟：终末地支持
-- 数据来源：森空岛、库街区等社区/官方应用接口
+- v1.1：新增鸣潮支持
+- v1.2：新增异环支持
+- 数据来源：森空岛、库街区、塔吉多等官方应用接口
 
 ## 功能
 
@@ -14,6 +16,7 @@ AnimeGames Bar 是一个 WinUI 3 桌面状态栏，用来集中查看常用二�
 - 每个游戏独立保存账号凭据。
 - 每个游戏可设置独立自动刷新频率。
 - 启动时可自动签到，并通过 Windows 通知显示结果。
+- 每日 00:01 可执行自动签到。
 - 设置页支持明暗模式、启动时自动签到、每日自动签到、手动签到范围、Windows 通知、开机自启。
 
 ## 已支持游戏
@@ -49,13 +52,25 @@ AnimeGames Bar 是一个 WinUI 3 桌面状态栏，用来集中查看常用二�
 - 终焉矩阵结束时间。
 - 库街区游戏签到。
 
-鸣潮使用库街区 APP Token 接入：可以点击“登录”通过库街区移动端短信验证码获取 Token，也可以在鸣潮页的账号信息栏手动填写“库街区 Token”。保存后刷新即可自动读取绑定角色和小组件数据。如短信接口触发极验风控，请改用网页登录或手动 Token。
+鸣潮使用库街区 APP Token 接入。可以点击“登录”通过库街区移动端短信验证码获取 Token，也可以在鸣潮页的账号信息栏手动填写“库街区 Token”。
+
+### 异环
+
+- 本性像素。
+- 都市活力。
+- 活跃度。
+- 周本次数。
+- 塔吉多 App 签到。
+- 异环游戏签到。
+
+异环使用塔吉多账号接入。可以点击“登录”通过塔吉多短信验证码获取 Access Token，也可以在异环页手动填写塔吉多 Access Token 和 Refresh Token。
 
 ## 安全说明
 
 - 凭据默认保存在 Windows Credential Locker。
 - 如果 Credential Locker 不可用，会写入 `%LOCALAPPDATA%\AnimeGamesBar` 下的 DPAPI 加密备用文件。
 - 不要提交真实 token、cookie、调试 dump 或包含账号敏感信息的截图。
+- `.refs/` 是本地参考仓库目录，不应提交到 GitHub。
 
 ## 构建
 
@@ -77,25 +92,34 @@ dotnet build -c Release -p:Platform=x64
 - `src/AnimeGamesBar.App/Services/Skland`：森空岛请求、凭据、签到。
 - `src/AnimeGamesBar.App/Services/Arknights`：明日方舟与终末地数据适配。
 - `src/AnimeGamesBar.App/Services/Kuro`：库街区与鸣潮数据适配。
+- `src/AnimeGamesBar.App/Services/Tajiduo`：塔吉多与异环数据适配。
 - `src/AnimeGamesBar.App/Services/Settings`：本地设置。
 - `src/AnimeGamesBar.App/Services/Notifications`：Windows 通知。
 - `src/AnimeGamesBar.App/Services/Startup`：开机自启。
 
 ## 更新日志
 
+### v1.2
+
+- 新增异环支持。
+- 新增塔吉多短信验证码登录入口。
+- 新增异环本性像素、都市活力、活跃度、周本次数展示。
+- 新增塔吉多 App 签到与异环游戏签到。
+- 顶部游戏切换扩展为四段滑块。
+- 异环自动刷新频率独立保存。
+
 ### v1.1
 
 - 新增鸣潮支持。
-- 新增库街区 Token 凭据保存、绑定角色读取、数据终端展示。
+- 新增库街区 Token 凭据保存、绑定角色读取、数据展示。
 - 新增鸣潮库街区游戏签到。
 - 新增鸣潮库街区移动端短信验证码登录入口，用于获取 APP Token。
 - 自动刷新频率改为每个游戏独立设置。
 - 手动签到默认改为当前页面游戏，并可在设置中切回全部游戏签到。
 - 修复鸣潮周度游历和终焉矩阵时间解析。
-- 鸣潮周度游历补充新角色基础数据接口兜底，先约电台等级上限固定为 70。
+- 鸣潮周度游历补充角色基础数据接口兜底，先约电台等级上限固定为 70。
 - 自动签到改为启动时自动签到与每日 00:01 自动签到两个独立开关。
 - 修复顶部“每 X 分钟刷新”文本垂直不居中。
-- README 改为中文并补充版本说明。
 
 ### v1.0
 

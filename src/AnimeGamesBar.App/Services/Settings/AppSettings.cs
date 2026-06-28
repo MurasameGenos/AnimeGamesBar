@@ -10,6 +10,7 @@ public sealed record AppSettings(
     double ArknightsAutoRefreshIntervalMinutes = 5,
     double EndfieldAutoRefreshIntervalMinutes = 5,
     double WutheringWavesAutoRefreshIntervalMinutes = 5,
+    double YihuanAutoRefreshIntervalMinutes = 5,
     bool ManualSignInAllGames = false,
     bool DailyAutoSignEnabled = true)
 {

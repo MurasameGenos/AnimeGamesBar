@@ -4,5 +4,6 @@ public enum GameDashboardKind
 {
     Arknights,
     Endfield,
-    WutheringWaves
+    WutheringWaves,
+    Yihuan
 }

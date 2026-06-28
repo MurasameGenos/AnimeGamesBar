@@ -6,6 +6,7 @@ using AnimeGamesBar.App.Services.Arknights;
 using AnimeGamesBar.App.Services.Settings;
 using AnimeGamesBar.App.Services.Skland;
 using AnimeGamesBar.App.Services.Startup;
+using AnimeGamesBar.App.Services.Tajiduo;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -23,16 +24,21 @@ public sealed class MainViewModel : ObservableObject
     private readonly IKuroMonitor _kuroMonitor;
     private readonly IKuroSignInService _kuroSignInService;
     private readonly IKuroLoginService _kuroLoginService;
+    private readonly ITajiduoMonitor _tajiduoMonitor;
+    private readonly ITajiduoSignInService _tajiduoSignInService;
+    private readonly ITajiduoLoginService _tajiduoLoginService;
     private readonly ISettingsStore _settingsStore;
     private readonly IAppNotificationService _notificationService;
     private readonly IStartupService _startupService;
     private readonly List<ArknightsPlayerBinding> _arknightsBindings = new();
     private readonly List<ArknightsPlayerBinding> _endfieldBindings = new();
     private readonly List<ArknightsPlayerBinding> _wutheringWavesBindings = new();
+    private readonly List<ArknightsPlayerBinding> _yihuanBindings = new();
 
     private SklandCredential _arknightsCredential = SklandCredential.Empty;
     private SklandCredential _endfieldCredential = SklandCredential.Empty;
     private SklandCredential _wutheringWavesCredential = SklandCredential.Empty;
+    private SklandCredential _yihuanCredential = SklandCredential.Empty;
     private string _cred = string.Empty;
     private string _token = string.Empty;
     private string _cookie = string.Empty;
@@ -44,14 +50,17 @@ public sealed class MainViewModel : ObservableObject
     private ArknightsPlayerBinding? _selectedArknightsBinding;
     private ArknightsPlayerBinding? _selectedEndfieldBinding;
     private ArknightsPlayerBinding? _selectedWutheringWavesBinding;
+    private ArknightsPlayerBinding? _selectedYihuanBinding;
     private ArknightsAccountStatus? _arknightsSnapshot;
     private EndfieldAccountStatus? _endfieldSnapshot;
     private WutheringWavesAccountStatus? _wutheringWavesSnapshot;
+    private YihuanAccountStatus? _yihuanSnapshot;
     private GameDashboardKind _selectedGame = GameDashboardKind.Arknights;
     private bool _autoRefreshEnabled;
     private double _arknightsAutoRefreshIntervalMinutes = 5;
     private double _endfieldAutoRefreshIntervalMinutes = 5;
     private double _wutheringWavesAutoRefreshIntervalMinutes = 5;
+    private double _yihuanAutoRefreshIntervalMinutes = 5;
     private bool _isSettingsPageOpen;
     private bool _useDarkTheme = true;
     private bool _autoSignEnabled = true;
@@ -72,6 +81,9 @@ public sealed class MainViewModel : ObservableObject
         IKuroMonitor kuroMonitor,
         IKuroSignInService kuroSignInService,
         IKuroLoginService kuroLoginService,
+        ITajiduoMonitor tajiduoMonitor,
+        ITajiduoSignInService tajiduoSignInService,
+        ITajiduoLoginService tajiduoLoginService,
         ISettingsStore settingsStore,
         IAppNotificationService notificationService,
         IStartupService startupService)
@@ -83,6 +95,9 @@ public sealed class MainViewModel : ObservableObject
         _kuroMonitor = kuroMonitor;
         _kuroSignInService = kuroSignInService;
         _kuroLoginService = kuroLoginService;
+        _tajiduoMonitor = tajiduoMonitor;
+        _tajiduoSignInService = tajiduoSignInService;
+        _tajiduoLoginService = tajiduoLoginService;
         _settingsStore = settingsStore;
         _notificationService = notificationService;
         _startupService = startupService;
@@ -92,6 +107,7 @@ public sealed class MainViewModel : ObservableObject
         RefreshArknightsCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.Arknights, cancellationToken));
         RefreshEndfieldCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.Endfield, cancellationToken));
         RefreshWutheringWavesCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.WutheringWaves, cancellationToken));
+        RefreshYihuanCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.Yihuan, cancellationToken));
         SignInCommand = new AsyncCommand(SignInManualAsync);
         ScheduledSignInCommand = new AsyncCommand(cancellationToken => SignInAllAsync(cancellationToken, showNotification: NotificationsEnabled));
         SaveCredentialCommand = new AsyncCommand(SaveCredentialAsync);
@@ -125,6 +141,12 @@ public sealed class MainViewModel : ObservableObject
             SelectGame(GameDashboardKind.WutheringWaves);
             return Task.CompletedTask;
         });
+        SelectYihuanCommand = new AsyncCommand(_ =>
+        {
+            IsSettingsPageOpen = false;
+            SelectGame(GameDashboardKind.Yihuan);
+            return Task.CompletedTask;
+        });
 
         _ = InitializeAsync();
     }
@@ -145,6 +167,8 @@ public sealed class MainViewModel : ObservableObject
 
     public AsyncCommand RefreshWutheringWavesCommand { get; }
 
+    public AsyncCommand RefreshYihuanCommand { get; }
+
     public AsyncCommand SignInCommand { get; }
 
     public AsyncCommand ScheduledSignInCommand { get; }
@@ -160,6 +184,8 @@ public sealed class MainViewModel : ObservableObject
     public AsyncCommand SelectEndfieldCommand { get; }
 
     public AsyncCommand SelectWutheringWavesCommand { get; }
+
+    public AsyncCommand SelectYihuanCommand { get; }
 
     public AsyncCommand OpenSettingsCommand { get; }
 
@@ -205,6 +231,7 @@ public sealed class MainViewModel : ObservableObject
                 GameDashboardKind.Arknights => SetProperty(ref _selectedArknightsBinding, value),
                 GameDashboardKind.Endfield => SetProperty(ref _selectedEndfieldBinding, value),
                 GameDashboardKind.WutheringWaves => SetProperty(ref _selectedWutheringWavesBinding, value),
+                GameDashboardKind.Yihuan => SetProperty(ref _selectedYihuanBinding, value),
                 _ => false
             };
             if (changed)
@@ -239,6 +266,7 @@ public sealed class MainViewModel : ObservableObject
                 OnPropertyChanged(nameof(ArknightsAutoRefreshIntervalMinutes));
                 OnPropertyChanged(nameof(EndfieldAutoRefreshIntervalMinutes));
                 OnPropertyChanged(nameof(WutheringWavesAutoRefreshIntervalMinutes));
+                OnPropertyChanged(nameof(YihuanAutoRefreshIntervalMinutes));
                 _ = SaveSettingsAsync();
             }
         }
@@ -249,6 +277,8 @@ public sealed class MainViewModel : ObservableObject
     public double EndfieldAutoRefreshIntervalMinutes => _endfieldAutoRefreshIntervalMinutes;
 
     public double WutheringWavesAutoRefreshIntervalMinutes => _wutheringWavesAutoRefreshIntervalMinutes;
+
+    public double YihuanAutoRefreshIntervalMinutes => _yihuanAutoRefreshIntervalMinutes;
 
     public string AutoRefreshSummary => AutoRefreshEnabled
         ? $"\u6BCF {AutoRefreshIntervalMinutes:0} \u5206\u949F\u5237\u65B0"
@@ -399,11 +429,24 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    public bool IsYihuanSelected
+    {
+        get => _selectedGame == GameDashboardKind.Yihuan;
+        set
+        {
+            if (value)
+            {
+                SelectGame(GameDashboardKind.Yihuan);
+            }
+        }
+    }
+
     public int GameSelectorThumbColumn => _selectedGame switch
     {
         GameDashboardKind.Arknights => 0,
         GameDashboardKind.Endfield => 1,
         GameDashboardKind.WutheringWaves => 2,
+        GameDashboardKind.Yihuan => 3,
         _ => 0
     };
 
@@ -419,6 +462,10 @@ public sealed class MainViewModel : ObservableObject
         ? Visibility.Visible
         : Visibility.Collapsed;
 
+    public Visibility YihuanDashboardVisibility => _selectedGame == GameDashboardKind.Yihuan
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
     public string SelectedGameTitle => GameTitle(_selectedGame);
 
     public string AccountPanelSubtitle => _selectedGame switch
@@ -426,18 +473,44 @@ public sealed class MainViewModel : ObservableObject
         GameDashboardKind.Arknights => "\u7F57\u5FB7\u5C9B\u8D26\u53F7\u4E0E\u5237\u65B0\u8BBE\u7F6E",
         GameDashboardKind.Endfield => "\u7EC8\u672B\u5730\u8D26\u53F7\u4E0E\u5237\u65B0\u8BBE\u7F6E",
         GameDashboardKind.WutheringWaves => "\u5E93\u8857\u533A Token \u4E0E\u5237\u65B0\u8BBE\u7F6E",
+        GameDashboardKind.Yihuan => "塔吉多 Token 与刷新设置",
         _ => string.Empty
     };
 
-    public string CredFieldHeader => _selectedGame == GameDashboardKind.WutheringWaves ? "\u5907\u6CE8\uFF08\u53EF\u7559\u7A7A\uFF09" : "Cred";
+    public string CredFieldHeader => _selectedGame switch
+    {
+        GameDashboardKind.WutheringWaves => "\u5907\u6CE8\uFF08\u53EF\u7559\u7A7A\uFF09",
+        GameDashboardKind.Yihuan => "老虎账号信息（自动填充，可留空）",
+        _ => "Cred"
+    };
 
-    public string TokenFieldHeader => _selectedGame == GameDashboardKind.WutheringWaves ? "\u5E93\u8857\u533A Token" : "Token";
+    public string TokenFieldHeader => _selectedGame switch
+    {
+        GameDashboardKind.WutheringWaves => "\u5E93\u8857\u533A Token",
+        GameDashboardKind.Yihuan => "塔吉多 Access Token",
+        _ => "Token"
+    };
 
-    public string CookieFieldHeader => _selectedGame == GameDashboardKind.WutheringWaves ? "\u5907\u7528 Cookie\uFF08\u53EF\u7559\u7A7A\uFF09" : "Cookie";
+    public string CookieFieldHeader => _selectedGame switch
+    {
+        GameDashboardKind.WutheringWaves => "\u5907\u7528 Cookie\uFF08\u53EF\u7559\u7A7A\uFF09",
+        GameDashboardKind.Yihuan => "塔吉多 Refresh Token（可留空）",
+        _ => "Cookie"
+    };
 
-    public string UserIdFieldHeader => _selectedGame == GameDashboardKind.WutheringWaves ? "\u5E93\u8857\u533A User ID\uFF08\u81EA\u52A8\u586B\u5145\uFF09" : "User ID";
+    public string UserIdFieldHeader => _selectedGame switch
+    {
+        GameDashboardKind.WutheringWaves => "\u5E93\u8857\u533A User ID\uFF08\u81EA\u52A8\u586B\u5145\uFF09",
+        GameDashboardKind.Yihuan => "塔吉多 UID（自动填充）",
+        _ => "User ID"
+    };
 
-    public string DeviceIdFieldHeader => _selectedGame == GameDashboardKind.WutheringWaves ? "\u8BBE\u5907 devCode" : "Device ID";
+    public string DeviceIdFieldHeader => _selectedGame switch
+    {
+        GameDashboardKind.WutheringWaves => "\u8BBE\u5907 devCode",
+        GameDashboardKind.Yihuan => "塔吉多 deviceId",
+        _ => "Device ID"
+    };
 
     public string DoctorName
     {
@@ -622,6 +695,32 @@ public sealed class MainViewModel : ObservableObject
 
     public string WutheringSignInText => _wutheringWavesSnapshot?.HasSignedIn == true ? "\u4ECA\u65E5\u5DF2\u7B7E\u5230" : "\u4ECA\u65E5\u672A\u7B7E\u5230";
 
+    public int YihuanNaturePixelsValue => _yihuanSnapshot?.NaturePixels.Current ?? 0;
+
+    public int YihuanNaturePixelsMax => Math.Max(_yihuanSnapshot?.NaturePixels.Maximum ?? 1, 1);
+
+    public string YihuanNaturePixelsText => FormatMeter(_yihuanSnapshot?.NaturePixels);
+
+    public int YihuanCityVitalityValue => _yihuanSnapshot?.CityVitality.Current ?? 0;
+
+    public int YihuanCityVitalityMax => Math.Max(_yihuanSnapshot?.CityVitality.Maximum ?? 1, 1);
+
+    public string YihuanCityVitalityText => FormatMeter(_yihuanSnapshot?.CityVitality);
+
+    public int YihuanDailyActivityValue => _yihuanSnapshot?.DailyActivity.Current ?? 0;
+
+    public int YihuanDailyActivityMax => Math.Max(_yihuanSnapshot?.DailyActivity.Maximum ?? 1, 1);
+
+    public string YihuanDailyActivityText => FormatProgress(_yihuanSnapshot?.DailyActivity);
+
+    public int YihuanWeeklyBossValue => _yihuanSnapshot?.WeeklyBoss.Current ?? 0;
+
+    public int YihuanWeeklyBossMax => Math.Max(_yihuanSnapshot?.WeeklyBoss.Maximum ?? 1, 1);
+
+    public string YihuanWeeklyBossText => FormatProgress(_yihuanSnapshot?.WeeklyBoss);
+
+    public string YihuanSignInText => _yihuanSnapshot?.HasSignedIn == true ? "今日已签到" : "今日未签到";
+
     private async Task InitializeAsync()
     {
         await LoadSettingsAsync(CancellationToken.None);
@@ -630,13 +729,15 @@ public sealed class MainViewModel : ObservableObject
         var arknightsCredential = await _credentialStore.LoadAsync(CredentialScopeFor(GameDashboardKind.Arknights), CancellationToken.None);
         var endfieldCredential = await _credentialStore.LoadAsync(CredentialScopeFor(GameDashboardKind.Endfield), CancellationToken.None);
         var wutheringWavesCredential = await _credentialStore.LoadAsync(CredentialScopeFor(GameDashboardKind.WutheringWaves), CancellationToken.None);
+        var yihuanCredential = await _credentialStore.LoadAsync(CredentialScopeFor(GameDashboardKind.Yihuan), CancellationToken.None);
 
         _arknightsCredential = arknightsCredential ?? legacyCredential ?? SklandCredential.Empty;
         _endfieldCredential = endfieldCredential ?? legacyCredential ?? SklandCredential.Empty;
         _wutheringWavesCredential = wutheringWavesCredential ?? SklandCredential.Empty;
+        _yihuanCredential = yihuanCredential ?? SklandCredential.Empty;
         _credentialsLoaded = true;
 
-        if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret && !_wutheringWavesCredential.HasAnySecret)
+        if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret && !_wutheringWavesCredential.HasAnySecret && !_yihuanCredential.HasAnySecret)
         {
             SetStatus("\u672A\u627E\u5230\u672C\u5730\u51ED\u636E\u3002", InfoBarSeverity.Informational);
             return;
@@ -664,11 +765,13 @@ public sealed class MainViewModel : ObservableObject
             _arknightsAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.ArknightsAutoRefreshIntervalMinutes);
             _endfieldAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.EndfieldAutoRefreshIntervalMinutes);
             _wutheringWavesAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.WutheringWavesAutoRefreshIntervalMinutes);
+            _yihuanAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.YihuanAutoRefreshIntervalMinutes);
             OnPropertyChanged(nameof(AutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(AutoRefreshSummary));
             OnPropertyChanged(nameof(ArknightsAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(EndfieldAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(WutheringWavesAutoRefreshIntervalMinutes));
+            OnPropertyChanged(nameof(YihuanAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(DailyAutoSignSummary));
         }
         finally
@@ -696,6 +799,7 @@ public sealed class MainViewModel : ObservableObject
                     _arknightsAutoRefreshIntervalMinutes,
                     _endfieldAutoRefreshIntervalMinutes,
                     _wutheringWavesAutoRefreshIntervalMinutes,
+                    _yihuanAutoRefreshIntervalMinutes,
                     ManualSignInAllGames,
                     DailyAutoSignEnabled),
                 CancellationToken.None);
@@ -731,7 +835,7 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             CommitCurrentCredentialFields();
-            if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret && !_wutheringWavesCredential.HasAnySecret)
+            if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret && !_wutheringWavesCredential.HasAnySecret && !_yihuanCredential.HasAnySecret)
             {
                 SetStatus("\u7F3A\u5C11\u8D26\u53F7\u51ED\u636E\u3002", InfoBarSeverity.Warning);
                 return;
@@ -751,6 +855,11 @@ public sealed class MainViewModel : ObservableObject
             if (_wutheringWavesCredential.HasAnySecret)
             {
                 refreshed += await RefreshGameAsync(GameDashboardKind.WutheringWaves, _wutheringWavesCredential, cancellationToken, showStatus: false) ? 1 : 0;
+            }
+
+            if (_yihuanCredential.HasAnySecret)
+            {
+                refreshed += await RefreshGameAsync(GameDashboardKind.Yihuan, _yihuanCredential, cancellationToken, showStatus: false) ? 1 : 0;
             }
 
             if (refreshed == 0)
@@ -874,7 +983,7 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             CommitCurrentCredentialFields();
-            if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret && !_wutheringWavesCredential.HasAnySecret)
+            if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret && !_wutheringWavesCredential.HasAnySecret && !_yihuanCredential.HasAnySecret)
             {
                 SetStatus("\u81EA\u52A8\u7B7E\u5230\u8DF3\u8FC7\uFF1A\u7F3A\u5C11\u8D26\u53F7\u51ED\u636E\u3002", InfoBarSeverity.Warning);
                 return;
@@ -894,6 +1003,11 @@ public sealed class MainViewModel : ObservableObject
             if (_wutheringWavesCredential.HasAnySecret)
             {
                 results.AddRange(await SignInGameAsync(GameDashboardKind.WutheringWaves, _wutheringWavesCredential, cancellationToken));
+            }
+
+            if (_yihuanCredential.HasAnySecret)
+            {
+                results.AddRange(await SignInGameAsync(GameDashboardKind.Yihuan, _yihuanCredential, cancellationToken));
             }
 
             if (results.Count == 0)
@@ -968,6 +1082,11 @@ public sealed class MainViewModel : ObservableObject
             return kuroResults;
         }
 
+        if (game == GameDashboardKind.Yihuan)
+        {
+            return await _tajiduoSignInService.SignInAsync(credential, bindings, cancellationToken);
+        }
+
         return await _signInService.SignInAsync(credential, game, bindings, cancellationToken);
     }
 
@@ -1002,10 +1121,15 @@ public sealed class MainViewModel : ObservableObject
             _endfieldSnapshot = await _monitor.GetEndfieldStatusAsync(credential, selectedBinding, cancellationToken);
             updatedAt = _endfieldSnapshot.UpdatedAt;
         }
-        else
+        else if (game == GameDashboardKind.WutheringWaves)
         {
             _wutheringWavesSnapshot = await _kuroMonitor.GetStatusAsync(credential, selectedBinding, cancellationToken);
             updatedAt = _wutheringWavesSnapshot.UpdatedAt;
+        }
+        else
+        {
+            _yihuanSnapshot = await _tajiduoMonitor.GetStatusAsync(credential, selectedBinding, cancellationToken);
+            updatedAt = _yihuanSnapshot.UpdatedAt;
         }
 
         if (game == _selectedGame)
@@ -1051,6 +1175,12 @@ public sealed class MainViewModel : ObservableObject
                     }
                 }
 
+                target.Clear();
+                target.AddRange(bindings);
+            }
+            else if (game == GameDashboardKind.Yihuan)
+            {
+                var bindings = await _tajiduoMonitor.GetBindingsAsync(credential, cancellationToken);
                 target.Clear();
                 target.AddRange(bindings);
             }
@@ -1102,9 +1232,13 @@ public sealed class MainViewModel : ObservableObject
         {
             _endfieldSnapshot = null;
         }
-        else
+        else if (game == GameDashboardKind.WutheringWaves)
         {
             _wutheringWavesSnapshot = null;
+        }
+        else
+        {
+            _yihuanSnapshot = null;
         }
 
         DoctorName = "\u672A\u767B\u5F55";
@@ -1144,6 +1278,29 @@ public sealed class MainViewModel : ObservableObject
                 NotifySnapshotChanged();
                 SetStatus("\u5E93\u8857\u533A\u767B\u5F55\u51ED\u636E\u5DF2\u4FDD\u5B58\uFF0C\u6B63\u5728\u9A8C\u8BC1\u9E23\u6F6E\u6570\u636E\u3002", InfoBarSeverity.Success);
                 await RefreshGameAsync(game, kuroCredential, cancellationToken);
+                return;
+            }
+
+            if (game == GameDashboardKind.Yihuan)
+            {
+                var tajiduoCredential = await _tajiduoLoginService.LoginAsync(OwnerWindow, GetCredentialFor(game), cancellationToken);
+                if (tajiduoCredential is null)
+                {
+                    SetStatus("已取消塔吉多登录。", InfoBarSeverity.Informational);
+                    return;
+                }
+
+                SetCredentialFor(game, tajiduoCredential);
+                ApplyCredential(tajiduoCredential);
+                await SaveCredentialForGameAsync(game, tajiduoCredential, cancellationToken);
+                BindingCache(game).Clear();
+                PlayerBindings.Clear();
+                SetSelectedBinding(game, null);
+                _yihuanSnapshot = null;
+                OnPropertyChanged(nameof(SelectedPlayerBinding));
+                NotifySnapshotChanged();
+                SetStatus("塔吉多登录凭据已保存，正在验证异环数据。", InfoBarSeverity.Success);
+                await RefreshGameAsync(game, tajiduoCredential, cancellationToken);
                 return;
             }
 
@@ -1252,6 +1409,7 @@ public sealed class MainViewModel : ObservableObject
             GameDashboardKind.Arknights => "arknights",
             GameDashboardKind.Endfield => "endfield",
             GameDashboardKind.WutheringWaves => "wutheringwaves",
+            GameDashboardKind.Yihuan => "yihuan",
             _ => "default"
         };
     }
@@ -1263,6 +1421,7 @@ public sealed class MainViewModel : ObservableObject
             GameDashboardKind.Arknights => _arknightsCredential,
             GameDashboardKind.Endfield => _endfieldCredential,
             GameDashboardKind.WutheringWaves => _wutheringWavesCredential,
+            GameDashboardKind.Yihuan => _yihuanCredential,
             _ => SklandCredential.Empty
         };
     }
@@ -1281,6 +1440,10 @@ public sealed class MainViewModel : ObservableObject
         {
             _wutheringWavesCredential = credential;
         }
+        else if (game == GameDashboardKind.Yihuan)
+        {
+            _yihuanCredential = credential;
+        }
     }
 
     private static string AppCodeFor(GameDashboardKind game)
@@ -1295,6 +1458,7 @@ public sealed class MainViewModel : ObservableObject
             GameDashboardKind.Arknights => _arknightsBindings,
             GameDashboardKind.Endfield => _endfieldBindings,
             GameDashboardKind.WutheringWaves => _wutheringWavesBindings,
+            GameDashboardKind.Yihuan => _yihuanBindings,
             _ => _arknightsBindings
         };
     }
@@ -1316,6 +1480,7 @@ public sealed class MainViewModel : ObservableObject
             GameDashboardKind.Arknights => _selectedArknightsBinding,
             GameDashboardKind.Endfield => _selectedEndfieldBinding,
             GameDashboardKind.WutheringWaves => _selectedWutheringWavesBinding,
+            GameDashboardKind.Yihuan => _selectedYihuanBinding,
             _ => null
         };
     }
@@ -1334,6 +1499,10 @@ public sealed class MainViewModel : ObservableObject
         {
             _selectedWutheringWavesBinding = binding;
         }
+        else if (game == GameDashboardKind.Yihuan)
+        {
+            _selectedYihuanBinding = binding;
+        }
     }
 
     private static string GameTitle(GameDashboardKind game)
@@ -1343,6 +1512,7 @@ public sealed class MainViewModel : ObservableObject
             GameDashboardKind.Arknights => "\u660E\u65E5\u65B9\u821F",
             GameDashboardKind.Endfield => "\u7EC8\u672B\u5730",
             GameDashboardKind.WutheringWaves => "\u9E23\u6F6E",
+            GameDashboardKind.Yihuan => "异环",
             _ => string.Empty
         };
     }
@@ -1384,6 +1554,7 @@ public sealed class MainViewModel : ObservableObject
             GameDashboardKind.Arknights => _arknightsSnapshot?.DoctorName ?? SelectedPlayerBinding?.NickName ?? "\u672A\u767B\u5F55",
             GameDashboardKind.Endfield => _endfieldSnapshot?.PlayerName ?? SelectedPlayerBinding?.NickName ?? "\u672A\u767B\u5F55",
             GameDashboardKind.WutheringWaves => _wutheringWavesSnapshot?.PlayerName ?? SelectedPlayerBinding?.NickName ?? "\u672A\u767B\u5F55",
+            GameDashboardKind.Yihuan => _yihuanSnapshot?.PlayerName ?? SelectedPlayerBinding?.NickName ?? "\u672A\u767B\u5F55",
             _ => "\u672A\u767B\u5F55"
         };
     }
@@ -1417,6 +1588,7 @@ public sealed class MainViewModel : ObservableObject
             GameDashboardKind.Arknights => _arknightsAutoRefreshIntervalMinutes,
             GameDashboardKind.Endfield => _endfieldAutoRefreshIntervalMinutes,
             GameDashboardKind.WutheringWaves => _wutheringWavesAutoRefreshIntervalMinutes,
+            GameDashboardKind.Yihuan => _yihuanAutoRefreshIntervalMinutes,
             _ => 5
         };
     }
@@ -1429,6 +1601,7 @@ public sealed class MainViewModel : ObservableObject
             GameDashboardKind.Arknights => SetProperty(ref _arknightsAutoRefreshIntervalMinutes, value, nameof(AutoRefreshIntervalMinutes)),
             GameDashboardKind.Endfield => SetProperty(ref _endfieldAutoRefreshIntervalMinutes, value, nameof(AutoRefreshIntervalMinutes)),
             GameDashboardKind.WutheringWaves => SetProperty(ref _wutheringWavesAutoRefreshIntervalMinutes, value, nameof(AutoRefreshIntervalMinutes)),
+            GameDashboardKind.Yihuan => SetProperty(ref _yihuanAutoRefreshIntervalMinutes, value, nameof(AutoRefreshIntervalMinutes)),
             _ => false
         };
     }
@@ -1510,6 +1683,19 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(WutheringSeaResetText));
         OnPropertyChanged(nameof(WutheringFinalBattleEndText));
         OnPropertyChanged(nameof(WutheringSignInText));
+        OnPropertyChanged(nameof(YihuanNaturePixelsValue));
+        OnPropertyChanged(nameof(YihuanNaturePixelsMax));
+        OnPropertyChanged(nameof(YihuanNaturePixelsText));
+        OnPropertyChanged(nameof(YihuanCityVitalityValue));
+        OnPropertyChanged(nameof(YihuanCityVitalityMax));
+        OnPropertyChanged(nameof(YihuanCityVitalityText));
+        OnPropertyChanged(nameof(YihuanDailyActivityValue));
+        OnPropertyChanged(nameof(YihuanDailyActivityMax));
+        OnPropertyChanged(nameof(YihuanDailyActivityText));
+        OnPropertyChanged(nameof(YihuanWeeklyBossValue));
+        OnPropertyChanged(nameof(YihuanWeeklyBossMax));
+        OnPropertyChanged(nameof(YihuanWeeklyBossText));
+        OnPropertyChanged(nameof(YihuanSignInText));
     }
 
     private void NotifyAccountChanged()
@@ -1522,10 +1708,12 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsArknightsSelected));
         OnPropertyChanged(nameof(IsEndfieldSelected));
         OnPropertyChanged(nameof(IsWutheringWavesSelected));
+        OnPropertyChanged(nameof(IsYihuanSelected));
         OnPropertyChanged(nameof(GameSelectorThumbColumn));
         OnPropertyChanged(nameof(ArknightsDashboardVisibility));
         OnPropertyChanged(nameof(EndfieldDashboardVisibility));
         OnPropertyChanged(nameof(WutheringWavesDashboardVisibility));
+        OnPropertyChanged(nameof(YihuanDashboardVisibility));
         OnPropertyChanged(nameof(SelectedGameTitle));
         OnPropertyChanged(nameof(AccountPanelSubtitle));
         OnPropertyChanged(nameof(CredFieldHeader));

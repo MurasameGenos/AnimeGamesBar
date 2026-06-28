@@ -14,6 +14,7 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _arknightsAutoRefreshTimer = new();
     private readonly DispatcherTimer _endfieldAutoRefreshTimer = new();
     private readonly DispatcherTimer _wutheringWavesAutoRefreshTimer = new();
+    private readonly DispatcherTimer _yihuanAutoRefreshTimer = new();
     private readonly DispatcherTimer _autoSignTimer = new();
 
     public MainWindow(MainViewModel viewModel)
@@ -26,6 +27,7 @@ public sealed partial class MainWindow : Window
         _arknightsAutoRefreshTimer.Tick += ArknightsAutoRefreshTimer_OnTick;
         _endfieldAutoRefreshTimer.Tick += EndfieldAutoRefreshTimer_OnTick;
         _wutheringWavesAutoRefreshTimer.Tick += WutheringWavesAutoRefreshTimer_OnTick;
+        _yihuanAutoRefreshTimer.Tick += YihuanAutoRefreshTimer_OnTick;
         _autoSignTimer.Tick += AutoSignTimer_OnTick;
         Root.DataContext = ViewModel;
         Closed += MainWindow_OnClosed;
@@ -66,7 +68,8 @@ public sealed partial class MainWindow : Window
             or nameof(MainViewModel.AutoRefreshIntervalMinutes)
             or nameof(MainViewModel.ArknightsAutoRefreshIntervalMinutes)
             or nameof(MainViewModel.EndfieldAutoRefreshIntervalMinutes)
-            or nameof(MainViewModel.WutheringWavesAutoRefreshIntervalMinutes))
+            or nameof(MainViewModel.WutheringWavesAutoRefreshIntervalMinutes)
+            or nameof(MainViewModel.YihuanAutoRefreshIntervalMinutes))
         {
             UpdateAutoRefreshTimer();
         }
@@ -106,6 +109,14 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void YihuanAutoRefreshTimer_OnTick(object? sender, object e)
+    {
+        if (ViewModel.AutoRefreshEnabled && ViewModel.RefreshYihuanCommand.CanExecute(null))
+        {
+            ViewModel.RefreshYihuanCommand.Execute(null);
+        }
+    }
+
     private void AutoSignTimer_OnTick(object? sender, object e)
     {
         if (ViewModel.TryReserveDailyAutoSign(DateTime.Now) &&
@@ -120,6 +131,7 @@ public sealed partial class MainWindow : Window
         ConfigureAutoRefreshTimer(_arknightsAutoRefreshTimer, ViewModel.ArknightsAutoRefreshIntervalMinutes);
         ConfigureAutoRefreshTimer(_endfieldAutoRefreshTimer, ViewModel.EndfieldAutoRefreshIntervalMinutes);
         ConfigureAutoRefreshTimer(_wutheringWavesAutoRefreshTimer, ViewModel.WutheringWavesAutoRefreshIntervalMinutes);
+        ConfigureAutoRefreshTimer(_yihuanAutoRefreshTimer, ViewModel.YihuanAutoRefreshIntervalMinutes);
     }
 
     private void ConfigureAutoRefreshTimer(DispatcherTimer timer, double minutes)
@@ -207,12 +219,14 @@ public sealed partial class MainWindow : Window
         _arknightsAutoRefreshTimer.Stop();
         _endfieldAutoRefreshTimer.Stop();
         _wutheringWavesAutoRefreshTimer.Stop();
+        _yihuanAutoRefreshTimer.Stop();
         _autoSignTimer.Stop();
         ViewModel.PropertyChanged -= ViewModel_OnPropertyChanged;
         ViewModel.CredentialApplied -= ViewModel_OnCredentialApplied;
         _arknightsAutoRefreshTimer.Tick -= ArknightsAutoRefreshTimer_OnTick;
         _endfieldAutoRefreshTimer.Tick -= EndfieldAutoRefreshTimer_OnTick;
         _wutheringWavesAutoRefreshTimer.Tick -= WutheringWavesAutoRefreshTimer_OnTick;
+        _yihuanAutoRefreshTimer.Tick -= YihuanAutoRefreshTimer_OnTick;
         _autoSignTimer.Tick -= AutoSignTimer_OnTick;
     }
 }
