@@ -7,16 +7,21 @@
     Title="AnimeGames Bar"
     mc:Ignorable="d">
 
-    <Grid x:Name="Root" Background="#D9D9D9">
+    <Grid
+        x:Name="Root"
+        Background="#202124"
+        RequestedTheme="Dark">
         <Grid.Resources>
-            <SolidColorBrush x:Key="PanelSurfaceBrush" Color="#ECECEC" />
-            <SolidColorBrush x:Key="CardSurfaceBrush" Color="#F8F8F8" />
-            <SolidColorBrush x:Key="SubtleCardBrush" Color="#F1F1F1" />
-            <SolidColorBrush x:Key="AppAccentBrush" Color="#0067A8" />
-            <SolidColorBrush x:Key="AppAccentSoftBrush" Color="#D9EBF7" />
-            <SolidColorBrush x:Key="AppBorderBrush" Color="#C6C6C6" />
-            <SolidColorBrush x:Key="AppTextBrush" Color="#1F1F1F" />
-            <SolidColorBrush x:Key="AppMutedTextBrush" Color="#5E5E5E" />
+            <SolidColorBrush x:Key="PanelSurfaceBrush" Color="#28292B" />
+            <SolidColorBrush x:Key="CardSurfaceBrush" Color="#303133" />
+            <SolidColorBrush x:Key="SubtleCardBrush" Color="#37383A" />
+            <SolidColorBrush x:Key="AppAccentBrush" Color="#4CC2FF" />
+            <SolidColorBrush x:Key="AppAccentSoftBrush" Color="#163447" />
+            <SolidColorBrush x:Key="AppBorderBrush" Color="#3E4043" />
+            <SolidColorBrush x:Key="AppTextBrush" Color="#F4F6F8" />
+            <SolidColorBrush x:Key="AppMutedTextBrush" Color="#A8ADB4" />
+            <SolidColorBrush x:Key="AppButtonBrush" Color="#37383A" />
+            <SolidColorBrush x:Key="AppButtonHoverBrush" Color="#424446" />
             <Style x:Key="MetricTitleStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="15" />
                 <Setter Property="FontWeight" Value="SemiBold" />
@@ -76,7 +81,7 @@
                     Padding="14,6"
                     Background="{StaticResource AppAccentBrush}"
                     Command="{Binding RefreshCommand}"
-                    Foreground="White">
+                    Foreground="#101418">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <SymbolIcon Symbol="Refresh" />
                         <TextBlock Text="&#x5237;&#x65B0;" />
@@ -85,7 +90,9 @@
                 <Button
                     MinHeight="36"
                     Padding="14,6"
-                    Command="{Binding SaveCredentialCommand}">
+                    Background="{StaticResource AppButtonBrush}"
+                    Command="{Binding SaveCredentialCommand}"
+                    Foreground="{StaticResource AppTextBrush}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <SymbolIcon Symbol="Save" />
                         <TextBlock Text="&#x4FDD;&#x5B58;" />
@@ -94,7 +101,9 @@
                 <Button
                     MinHeight="36"
                     Padding="14,6"
-                    Command="{Binding StartLoginCommand}">
+                    Background="{StaticResource AppButtonBrush}"
+                    Command="{Binding StartLoginCommand}"
+                    Foreground="{StaticResource AppTextBrush}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <SymbolIcon Symbol="Contact" />
                         <TextBlock Text="&#x767B;&#x5F55;" />
@@ -103,7 +112,9 @@
                 <Button
                     MinHeight="36"
                     Padding="14,6"
-                    Command="{Binding ClearCredentialCommand}">
+                    Background="{StaticResource AppButtonBrush}"
+                    Command="{Binding ClearCredentialCommand}"
+                    Foreground="{StaticResource AppTextBrush}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <SymbolIcon Symbol="Delete" />
                         <TextBlock Text="&#x6E05;&#x9664;" />
