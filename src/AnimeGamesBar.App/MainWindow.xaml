@@ -371,6 +371,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <Border
@@ -982,6 +983,33 @@
                             <ToggleSwitch
                                 Header="{Binding DailyAutoSignSummary}"
                                 IsOn="{Binding DailyAutoSignEnabled, Mode=TwoWay}" />
+                        </Border>
+
+                        <Border
+                            Grid.Row="3"
+                            Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="16">
+                            <ToggleSwitch
+                                Header="Server &#x9171;&#x901A;&#x77E5;"
+                                IsOn="{Binding ServerChanEnabled, Mode=TwoWay}" />
+                        </Border>
+
+                        <Border
+                            Grid.Row="3"
+                            Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="16">
+                            <TextBox
+                                Header="Server &#x9171; SendKey"
+                                PlaceholderText="SCT..."
+                                Text="{Binding ServerChanSendKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </Border>
                     </Grid>
                 </Grid>

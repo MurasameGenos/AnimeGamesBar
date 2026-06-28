@@ -18,6 +18,7 @@ AnimeGames Bar 是一个 WinUI 3 桌面状态栏，用来集中查看常用二�
 - 启动时可自动签到，并通过 Windows 通知显示结果。
 - 每日 00:01 可执行自动签到。
 - 设置页支持明暗模式、启动时自动签到、每日自动签到、手动签到范围、Windows 通知、开机自启。
+- 支持 Server 酱外部通知，当前与 Windows 通知触发时机同步。
 
 ## 已支持游戏
 
@@ -70,6 +71,7 @@ AnimeGames Bar 是一个 WinUI 3 桌面状态栏，用来集中查看常用二�
 - 凭据默认保存在 Windows Credential Locker。
 - 如果 Credential Locker 不可用，会写入 `%LOCALAPPDATA%\AnimeGamesBar` 下的 DPAPI 加密备用文件。
 - 不要提交真实 token、cookie、调试 dump 或包含账号敏感信息的截图。
+- 不要提交 Server 酱 SendKey。
 - `.refs/` 是本地参考仓库目录，不应提交到 GitHub。
 
 ## 构建
@@ -105,6 +107,7 @@ dotnet build -c Release -p:Platform=x64
 - 新增塔吉多短信验证码登录入口。
 - 新增异环本性像素、都市活力、活跃度、周本次数展示。
 - 新增塔吉多 App 签到与异环游戏签到。
+- 新增 Server 酱外部通知渠道，暂时与 Windows 通知同步发送。
 - 顶部游戏切换扩展为四段滑块。
 - 异环自动刷新频率独立保存。
 

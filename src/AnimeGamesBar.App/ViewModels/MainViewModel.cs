@@ -67,6 +67,8 @@ public sealed class MainViewModel : ObservableObject
     private bool _dailyAutoSignEnabled = true;
     private bool _manualSignInAllGames;
     private bool _notificationsEnabled = true;
+    private bool _serverChanEnabled;
+    private string _serverChanSendKey = string.Empty;
     private bool _startWithWindows;
     private bool _credentialsLoaded;
     private DateOnly? _lastDailyAutoSignDate;
@@ -367,6 +369,32 @@ public sealed class MainViewModel : ObservableObject
         {
             if (SetProperty(ref _notificationsEnabled, value))
             {
+                _ = SaveSettingsAsync();
+            }
+        }
+    }
+
+    public bool ServerChanEnabled
+    {
+        get => _serverChanEnabled;
+        set
+        {
+            if (SetProperty(ref _serverChanEnabled, value))
+            {
+                ConfigureNotificationChannels();
+                _ = SaveSettingsAsync();
+            }
+        }
+    }
+
+    public string ServerChanSendKey
+    {
+        get => _serverChanSendKey;
+        set
+        {
+            if (SetProperty(ref _serverChanSendKey, value))
+            {
+                ConfigureNotificationChannels();
                 _ = SaveSettingsAsync();
             }
         }
@@ -761,6 +789,8 @@ public sealed class MainViewModel : ObservableObject
             DailyAutoSignEnabled = settings.DailyAutoSignEnabled;
             ManualSignInAllGames = settings.ManualSignInAllGames;
             NotificationsEnabled = settings.NotificationsEnabled;
+            ServerChanEnabled = settings.ServerChanEnabled;
+            ServerChanSendKey = settings.ServerChanSendKey;
             StartWithWindows = settings.StartWithWindows || _startupService.IsEnabled();
             _arknightsAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.ArknightsAutoRefreshIntervalMinutes);
             _endfieldAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.EndfieldAutoRefreshIntervalMinutes);
@@ -773,6 +803,7 @@ public sealed class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(WutheringWavesAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(YihuanAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(DailyAutoSignSummary));
+            ConfigureNotificationChannels();
         }
         finally
         {
@@ -801,7 +832,9 @@ public sealed class MainViewModel : ObservableObject
                     _wutheringWavesAutoRefreshIntervalMinutes,
                     _yihuanAutoRefreshIntervalMinutes,
                     ManualSignInAllGames,
-                    DailyAutoSignEnabled),
+                    DailyAutoSignEnabled,
+                    ServerChanEnabled,
+                    ServerChanSendKey),
                 CancellationToken.None);
         }
         catch (Exception ex)
@@ -1563,6 +1596,13 @@ public sealed class MainViewModel : ObservableObject
     {
         StatusSeverity = severity;
         StatusMessage = message;
+    }
+
+    private void ConfigureNotificationChannels()
+    {
+        _notificationService.Configure(new AppNotificationOptions(
+            ServerChanEnabled,
+            ServerChanSendKey));
     }
 
     private static string BuildSignInSummary(IReadOnlyList<SklandSignInResult> results)

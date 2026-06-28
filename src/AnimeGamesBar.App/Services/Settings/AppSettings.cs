@@ -12,7 +12,9 @@ public sealed record AppSettings(
     double WutheringWavesAutoRefreshIntervalMinutes = 5,
     double YihuanAutoRefreshIntervalMinutes = 5,
     bool ManualSignInAllGames = false,
-    bool DailyAutoSignEnabled = true)
+    bool DailyAutoSignEnabled = true,
+    bool ServerChanEnabled = false,
+    string ServerChanSendKey = "")
 {
     public static AppSettings Default { get; } = new(
         UseDarkTheme: true,

@@ -42,7 +42,7 @@ public partial class App : Application
         var tajiduoSignIn = new TajiduoSignInService(tajiduoClient);
         var tajiduoLogin = new TajiduoLoginService(tajiduoClient);
         var settingsStore = new JsonSettingsStore();
-        var notificationService = new WindowsAppNotificationService();
+        var notificationService = new WindowsAppNotificationService(httpClient);
         var startupService = new RegistryStartupService();
         notificationService.Initialize();
 
