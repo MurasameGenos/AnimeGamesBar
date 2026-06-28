@@ -92,7 +92,7 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
             Waveplates: ReadResource(data, "energyData", "结晶波片"),
             CrystalSolvent: ReadResource(data, "storeEnergyData", "结晶单质"),
             DailyActivity: ReadResource(data, "livenessData", "每日活跃度"),
-            WeeklyVoyage: ReadResource(data, "weeklyRougeData", "周度游历"),
+            WeeklyVoyage: ReadBattlePassWeeklyVoyage(data),
             WeeklyBoss: ReadResource(data, "weeklyData", "战歌重奏次数"),
             BattlePassLevel: ReadBattlePassLevel(data),
             TowerResetAt: ReadTimestamp(data, "towerData", "refreshTimeStamp"),
@@ -118,20 +118,50 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
 
     private static WutheringWavesResourceStatus ReadBattlePassLevel(JsonElement root)
     {
+        return TryReadBattlePassEntry(
+            root,
+            "先约电台等级",
+            name => name.Contains("等级", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("电台", StringComparison.OrdinalIgnoreCase)) ??
+            new WutheringWavesResourceStatus("先约电台等级", 0, 0);
+    }
+
+    private static WutheringWavesResourceStatus ReadBattlePassWeeklyVoyage(JsonElement root)
+    {
+        var entry = TryReadBattlePassEntry(
+            root,
+            "周度游历",
+            name => name.Contains("本周", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("周度", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("经验", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("游历", StringComparison.OrdinalIgnoreCase));
+
+        if (entry is not null)
+        {
+            return entry;
+        }
+
+        return ReadResource(root, "weeklyRougeData", "周度游历");
+    }
+
+    private static WutheringWavesResourceStatus? TryReadBattlePassEntry(
+        JsonElement root,
+        string fallbackName,
+        Func<string, bool> predicate)
+    {
         var battlePassData = KuroClient.Get(root, "battlePassData");
         if (battlePassData.ValueKind != JsonValueKind.Array)
         {
-            return new WutheringWavesResourceStatus("先约电台等级", 0, 0);
+            return null;
         }
 
         foreach (var item in battlePassData.EnumerateArray())
         {
             var name = KuroClient.ReadString(item, "name") ?? string.Empty;
-            if (name.Contains("等级", StringComparison.OrdinalIgnoreCase) ||
-                name.Contains("电台", StringComparison.OrdinalIgnoreCase))
+            if (predicate(name))
             {
                 return new WutheringWavesResourceStatus(
-                    "先约电台等级",
+                    fallbackName,
                     KuroClient.ReadInt(item, "cur") ?? 0,
                     KuroClient.ReadInt(item, "total") ?? 0,
                     ReadTimestamp(item, "refreshTimeStamp"),
@@ -140,19 +170,96 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
             }
         }
 
-        var first = battlePassData.EnumerateArray().FirstOrDefault();
-        return new WutheringWavesResourceStatus(
-            "先约电台等级",
-            KuroClient.ReadInt(first, "cur") ?? 0,
-            KuroClient.ReadInt(first, "total") ?? 0);
+        return null;
     }
 
     private static DateTimeOffset? ReadFinalBattleTime(JsonElement data)
     {
-        foreach (var name in new[] { "finalBattleData", "phantomBattleData", "bossData", "endBattleData" })
+        foreach (var name in new[]
+        {
+            "finalMatrixData",
+            "endlessMatrixData",
+            "matrixData",
+            "finalBattleData",
+            "phantomBattleData",
+            "bossData",
+            "endBattleData"
+        })
         {
             var value = KuroClient.Get(data, name);
-            var time = ReadTimestamp(value, "expireTimeStamp") ?? ReadTimestamp(value, "refreshTimeStamp");
+            var time = ReadBestTime(value);
+            if (time is not null)
+            {
+                return time;
+            }
+        }
+
+        return FindNamedTime(data);
+    }
+
+    private static DateTimeOffset? FindNamedTime(JsonElement element, string? parentName = null)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            var objectName = KuroClient.ReadString(element, "name", "title", "timePreDesc");
+            if (LooksLikeFinalMatrix(parentName) || LooksLikeFinalMatrix(objectName))
+            {
+                var time = ReadBestTime(element);
+                if (time is not null)
+                {
+                    return time;
+                }
+            }
+
+            foreach (var property in element.EnumerateObject())
+            {
+                var time = FindNamedTime(property.Value, property.Name);
+                if (time is not null)
+                {
+                    return time;
+                }
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                var time = FindNamedTime(item, parentName);
+                if (time is not null)
+                {
+                    return time;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static bool LooksLikeFinalMatrix(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        return value.Contains("终焉", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("矩阵", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("matrix", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static DateTimeOffset? ReadBestTime(JsonElement root)
+    {
+        foreach (var propertyName in new[]
+        {
+            "expireTimeStamp",
+            "endTimeStamp",
+            "endTimestamp",
+            "endTime",
+            "endAt",
+            "refreshTimeStamp"
+        })
+        {
+            var time = ReadTimestamp(root, propertyName);
             if (time is not null)
             {
                 return time;
@@ -180,7 +287,9 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
             return null;
         }
 
-        return DateTimeOffset.FromUnixTimeSeconds(timestamp.Value).ToLocalTime();
+        return timestamp.Value > 10_000_000_000
+            ? DateTimeOffset.FromUnixTimeMilliseconds(timestamp.Value).ToLocalTime()
+            : DateTimeOffset.FromUnixTimeSeconds(timestamp.Value).ToLocalTime();
     }
 
     private static bool IsTruthy(JsonElement value)

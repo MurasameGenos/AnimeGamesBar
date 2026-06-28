@@ -55,6 +55,7 @@ public sealed class MainViewModel : ObservableObject
     private bool _isSettingsPageOpen;
     private bool _useDarkTheme = true;
     private bool _autoSignEnabled = true;
+    private bool _manualSignInAllGames;
     private bool _notificationsEnabled = true;
     private bool _startWithWindows;
     private bool _settingsLoaded;
@@ -88,7 +89,7 @@ public sealed class MainViewModel : ObservableObject
         RefreshArknightsCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.Arknights, cancellationToken));
         RefreshEndfieldCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.Endfield, cancellationToken));
         RefreshWutheringWavesCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.WutheringWaves, cancellationToken));
-        SignInCommand = new AsyncCommand(SignInAllAsync);
+        SignInCommand = new AsyncCommand(SignInManualAsync);
         SaveCredentialCommand = new AsyncCommand(SaveCredentialAsync);
         ClearCredentialCommand = new AsyncCommand(ClearCredentialAsync);
         StartLoginCommand = new AsyncCommand(StartLoginAsync);
@@ -290,6 +291,21 @@ public sealed class MainViewModel : ObservableObject
             }
         }
     }
+
+    public bool ManualSignInAllGames
+    {
+        get => _manualSignInAllGames;
+        set
+        {
+            if (SetProperty(ref _manualSignInAllGames, value))
+            {
+                OnPropertyChanged(nameof(SignInButtonText));
+                _ = SaveSettingsAsync();
+            }
+        }
+    }
+
+    public string SignInButtonText => ManualSignInAllGames ? "\u5168\u90E8\u7B7E\u5230" : "\u672C\u9875\u7B7E\u5230";
 
     public bool NotificationsEnabled
     {
@@ -617,6 +633,7 @@ public sealed class MainViewModel : ObservableObject
             var settings = await _settingsStore.LoadAsync(cancellationToken);
             UseDarkTheme = settings.UseDarkTheme;
             AutoSignEnabled = settings.AutoSignEnabled;
+            ManualSignInAllGames = settings.ManualSignInAllGames;
             NotificationsEnabled = settings.NotificationsEnabled;
             StartWithWindows = settings.StartWithWindows || _startupService.IsEnabled();
             _arknightsAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.ArknightsAutoRefreshIntervalMinutes);
@@ -652,7 +669,8 @@ public sealed class MainViewModel : ObservableObject
                     StartWithWindows,
                     _arknightsAutoRefreshIntervalMinutes,
                     _endfieldAutoRefreshIntervalMinutes,
-                    _wutheringWavesAutoRefreshIntervalMinutes),
+                    _wutheringWavesAutoRefreshIntervalMinutes,
+                    ManualSignInAllGames),
                 CancellationToken.None);
         }
         catch (Exception ex)
@@ -746,6 +764,45 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    private async Task SignInManualAsync(CancellationToken cancellationToken)
+    {
+        if (ManualSignInAllGames)
+        {
+            await SignInAllAsync(cancellationToken, showNotification: NotificationsEnabled);
+            return;
+        }
+
+        await SignInCurrentGameAsync(cancellationToken, showNotification: NotificationsEnabled);
+    }
+
+    private async Task SignInCurrentGameAsync(CancellationToken cancellationToken, bool showNotification)
+    {
+        try
+        {
+            CommitCurrentCredentialFields();
+            var game = _selectedGame;
+            var credential = GetCredentialFor(game);
+            if (!credential.HasAnySecret)
+            {
+                SetStatus($"\u7B7E\u5230\u8DF3\u8FC7\uFF1A\u7F3A\u5C11{GameTitle(game)}\u8D26\u53F7\u51ED\u636E\u3002", InfoBarSeverity.Warning);
+                return;
+            }
+
+            var results = await SignInGameAsync(game, credential, cancellationToken);
+            if (results.Count == 0)
+            {
+                SetStatus($"\u6CA1\u6709\u627E\u5230\u53EF\u7B7E\u5230\u7684{GameTitle(game)}\u7ED1\u5B9A\u89D2\u8272\u3002", InfoBarSeverity.Warning);
+                return;
+            }
+
+            await PublishSignInResultsAsync(results, showNotification, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            await PublishSignInFailureAsync(ex.Message, showNotification, cancellationToken);
+        }
+    }
+
     private async Task SignInAllAsync(CancellationToken cancellationToken)
     {
         await SignInAllAsync(cancellationToken, showNotification: NotificationsEnabled);
@@ -794,30 +851,46 @@ public sealed class MainViewModel : ObservableObject
                 return;
             }
 
-            var failed = results.Count(result => result.IsFailure);
-            var alreadySigned = results.Count(result => result.State == SklandSignInState.AlreadySigned);
-            var succeeded = results.Count(result => result.State == SklandSignInState.Success);
-            var title = failed > 0
-                ? "\u6E38\u620F\u7B7E\u5230\u5B8C\u6210\uFF0C\u90E8\u5206\u5931\u8D25"
-                : succeeded == 0 && alreadySigned > 0
-                    ? "\u4ECA\u65E5\u5DF2\u7B7E\u5230"
-                    : "\u6E38\u620F\u7B7E\u5230\u5B8C\u6210";
-            var message = BuildSignInSummary(results);
-
-            SetStatus(message, failed > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
-            if (showNotification)
-            {
-                await _notificationService.ShowAsync(title, message, cancellationToken);
-            }
+            await PublishSignInResultsAsync(results, showNotification, cancellationToken);
         }
         catch (Exception ex)
         {
-            var message = $"\u7B7E\u5230\u5931\u8D25\uFF1A{ex.Message}";
-            SetStatus(message, InfoBarSeverity.Error);
-            if (showNotification)
-            {
-                await _notificationService.ShowAsync("\u6E38\u620F\u7B7E\u5230\u5931\u8D25", message, cancellationToken);
-            }
+            await PublishSignInFailureAsync(ex.Message, showNotification, cancellationToken);
+        }
+    }
+
+    private async Task PublishSignInResultsAsync(
+        IReadOnlyList<SklandSignInResult> results,
+        bool showNotification,
+        CancellationToken cancellationToken)
+    {
+        var failed = results.Count(result => result.IsFailure);
+        var alreadySigned = results.Count(result => result.State == SklandSignInState.AlreadySigned);
+        var succeeded = results.Count(result => result.State == SklandSignInState.Success);
+        var title = failed > 0
+            ? "\u6E38\u620F\u7B7E\u5230\u5B8C\u6210\uFF0C\u90E8\u5206\u5931\u8D25"
+            : succeeded == 0 && alreadySigned > 0
+                ? "\u4ECA\u65E5\u5DF2\u7B7E\u5230"
+                : "\u6E38\u620F\u7B7E\u5230\u5B8C\u6210";
+        var message = BuildSignInSummary(results);
+
+        SetStatus(message, failed > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
+        if (showNotification)
+        {
+            await _notificationService.ShowAsync(title, message, cancellationToken);
+        }
+    }
+
+    private async Task PublishSignInFailureAsync(
+        string reason,
+        bool showNotification,
+        CancellationToken cancellationToken)
+    {
+        var message = $"\u7B7E\u5230\u5931\u8D25\uFF1A{reason}";
+        SetStatus(message, InfoBarSeverity.Error);
+        if (showNotification)
+        {
+            await _notificationService.ShowAsync("\u6E38\u620F\u7B7E\u5230\u5931\u8D25", message, cancellationToken);
         }
     }
 
@@ -1410,6 +1483,7 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(DeviceIdFieldHeader));
         OnPropertyChanged(nameof(AutoRefreshIntervalMinutes));
         OnPropertyChanged(nameof(AutoRefreshSummary));
+        OnPropertyChanged(nameof(SignInButtonText));
         OnPropertyChanged(nameof(AccountBadgeText));
     }
 

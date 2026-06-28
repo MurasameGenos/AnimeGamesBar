@@ -9,7 +9,8 @@ public sealed record AppSettings(
     bool StartWithWindows,
     double ArknightsAutoRefreshIntervalMinutes = 5,
     double EndfieldAutoRefreshIntervalMinutes = 5,
-    double WutheringWavesAutoRefreshIntervalMinutes = 5)
+    double WutheringWavesAutoRefreshIntervalMinutes = 5,
+    bool ManualSignInAllGames = false)
 {
     public static AppSettings Default { get; } = new(
         UseDarkTheme: true,
