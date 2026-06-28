@@ -739,7 +739,7 @@
                             BorderThickness="1"
                             CornerRadius="6">
                             <StackPanel Spacing="10">
-                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x7EC8;&#x7109;&#x51B3;&#x6218;" />
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x7EC8;&#x7109;&#x77E9;&#x9635;" />
                                 <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource AppTextBrush}" Text="{Binding WutheringFinalBattleEndText}" />
                                 <TextBlock Style="{StaticResource MutedTextStyle}" Text="&#x7ED3;&#x675F;&#x65F6;&#x95F4;" />
                             </StackPanel>

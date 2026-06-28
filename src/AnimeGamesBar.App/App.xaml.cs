@@ -34,6 +34,7 @@ public partial class App : Application
         var kuroClient = new KuroClient(httpClient);
         var kuroMonitor = new KuroWutheringWavesMonitor(kuroClient);
         var kuroSignIn = new KuroSignInService(kuroClient);
+        var kuroLogin = new KuroLoginService();
         var settingsStore = new JsonSettingsStore();
         var notificationService = new WindowsAppNotificationService();
         var startupService = new RegistryStartupService();
@@ -46,6 +47,7 @@ public partial class App : Application
             signIn,
             kuroMonitor,
             kuroSignIn,
+            kuroLogin,
             settingsStore,
             notificationService,
             startupService);

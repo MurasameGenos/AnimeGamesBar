@@ -22,6 +22,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly ISklandSignInService _signInService;
     private readonly IKuroMonitor _kuroMonitor;
     private readonly IKuroSignInService _kuroSignInService;
+    private readonly IKuroLoginService _kuroLoginService;
     private readonly ISettingsStore _settingsStore;
     private readonly IAppNotificationService _notificationService;
     private readonly IStartupService _startupService;
@@ -66,6 +67,7 @@ public sealed class MainViewModel : ObservableObject
         ISklandSignInService signInService,
         IKuroMonitor kuroMonitor,
         IKuroSignInService kuroSignInService,
+        IKuroLoginService kuroLoginService,
         ISettingsStore settingsStore,
         IAppNotificationService notificationService,
         IStartupService startupService)
@@ -76,6 +78,7 @@ public sealed class MainViewModel : ObservableObject
         _signInService = signInService;
         _kuroMonitor = kuroMonitor;
         _kuroSignInService = kuroSignInService;
+        _kuroLoginService = kuroLoginService;
         _settingsStore = settingsStore;
         _notificationService = notificationService;
         _startupService = startupService;
@@ -999,7 +1002,24 @@ public sealed class MainViewModel : ObservableObject
             var game = _selectedGame;
             if (game == GameDashboardKind.WutheringWaves)
             {
-                SetStatus("\u9E23\u6F6E\u8BF7\u624B\u52A8\u586B\u5165\u5E93\u8857\u533A Token\uFF0C\u7136\u540E\u70B9\u51FB\u4FDD\u5B58\u6216\u5237\u65B0\u3002", InfoBarSeverity.Informational);
+                var kuroCredential = await _kuroLoginService.LoginAsync(OwnerWindow, GetCredentialFor(game), cancellationToken);
+                if (kuroCredential is null)
+                {
+                    SetStatus("\u5DF2\u53D6\u6D88\u5E93\u8857\u533A\u767B\u5F55\u3002", InfoBarSeverity.Informational);
+                    return;
+                }
+
+                SetCredentialFor(game, kuroCredential);
+                ApplyCredential(kuroCredential);
+                await SaveCredentialForGameAsync(game, kuroCredential, cancellationToken);
+                BindingCache(game).Clear();
+                PlayerBindings.Clear();
+                SetSelectedBinding(game, null);
+                _wutheringWavesSnapshot = null;
+                OnPropertyChanged(nameof(SelectedPlayerBinding));
+                NotifySnapshotChanged();
+                SetStatus("\u5E93\u8857\u533A\u767B\u5F55\u51ED\u636E\u5DF2\u4FDD\u5B58\uFF0C\u6B63\u5728\u9A8C\u8BC1\u9E23\u6F6E\u6570\u636E\u3002", InfoBarSeverity.Success);
+                await RefreshGameAsync(game, kuroCredential, cancellationToken);
                 return;
             }
 
