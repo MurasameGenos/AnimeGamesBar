@@ -71,9 +71,7 @@ public sealed partial class MainWindow : Window
             UpdateAutoRefreshTimer();
         }
 
-        if (e.PropertyName is nameof(MainViewModel.AutoSignEnabled)
-            or nameof(MainViewModel.AutoSignHour)
-            or nameof(MainViewModel.AutoSignMinute))
+        if (e.PropertyName == nameof(MainViewModel.DailyAutoSignEnabled))
         {
             UpdateAutoSignTimer();
         }
@@ -110,7 +108,7 @@ public sealed partial class MainWindow : Window
 
     private void AutoSignTimer_OnTick(object? sender, object e)
     {
-        if (ViewModel.TryReserveScheduledAutoSign(DateTime.Now) &&
+        if (ViewModel.TryReserveDailyAutoSign(DateTime.Now) &&
             ViewModel.ScheduledSignInCommand.CanExecute(null))
         {
             ViewModel.ScheduledSignInCommand.Execute(null);
@@ -138,7 +136,7 @@ public sealed partial class MainWindow : Window
     {
         _autoSignTimer.Stop();
         _autoSignTimer.Interval = TimeSpan.FromSeconds(30);
-        if (ViewModel.AutoSignEnabled)
+        if (ViewModel.DailyAutoSignEnabled)
         {
             _autoSignTimer.Start();
         }

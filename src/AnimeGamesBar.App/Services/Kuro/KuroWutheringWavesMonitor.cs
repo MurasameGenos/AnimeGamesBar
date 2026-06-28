@@ -87,10 +87,7 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
 
         var data = KuroClient.Get(document.RootElement, "data");
         var weeklyVoyage = ReadWeeklyVoyage(data);
-        if (weeklyVoyage.Current <= 0)
-        {
-            weeklyVoyage = await ReadWeeklyVoyageFromBaseDataAsync(credential, player, weeklyVoyage, cancellationToken);
-        }
+        weeklyVoyage = await ReadWeeklyVoyageFromBaseDataAsync(credential, player, weeklyVoyage, cancellationToken);
 
         var status = new WutheringWavesAccountStatus(
             PlayerName: KuroClient.ReadString(data, "roleName") ?? player.NickName,
@@ -180,13 +177,18 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
 
             using var dataDocument = JsonDocument.Parse(dataText);
             var data = dataDocument.RootElement;
+            var maximum = KuroClient.ReadInt(data, "rougeScoreLimit") ?? 0;
+            if (maximum <= 0)
+            {
+                return fallback;
+            }
+
             var current = KuroClient.ReadInt(data, "rougeScore") ?? fallback.Current;
-            var maximum = KuroClient.ReadInt(data, "rougeScoreLimit") ?? fallback.Maximum;
             var name = KuroClient.ReadString(data, "rougeTitle") ?? fallback.Name;
             return new WutheringWavesResourceStatus(
                 string.IsNullOrWhiteSpace(name) ? "周度游历" : name,
                 current,
-                maximum > 0 ? maximum : 6000,
+                maximum,
                 fallback.RefreshAt,
                 fallback.ExpireAt,
                 fallback.Value);

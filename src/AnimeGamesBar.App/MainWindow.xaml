@@ -829,7 +829,7 @@
                             CornerRadius="6"
                             Padding="16">
                             <ToggleSwitch
-                                Header="&#x81EA;&#x52A8;&#x7B7E;&#x5230;"
+                                Header="&#x542F;&#x52A8;&#x65F6;&#x81EA;&#x52A8;&#x7B7E;&#x5230;"
                                 IsOn="{Binding AutoSignEnabled, Mode=TwoWay}" />
                         </Border>
 
@@ -882,36 +882,9 @@
                             BorderThickness="1"
                             CornerRadius="6"
                             Padding="16">
-                            <StackPanel Spacing="10">
-                                <TextBlock
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource AppTextBrush}"
-                                    Text="{Binding AutoSignScheduleSummary}" />
-                                <Grid ColumnSpacing="10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <NumberBox
-                                        Grid.Column="0"
-                                        Header="&#x5C0F;&#x65F6;"
-                                        LargeChange="1"
-                                        Maximum="23"
-                                        Minimum="0"
-                                        SmallChange="1"
-                                        SpinButtonPlacementMode="Compact"
-                                        Value="{Binding AutoSignHour, Mode=TwoWay}" />
-                                    <NumberBox
-                                        Grid.Column="1"
-                                        Header="&#x5206;&#x949F;"
-                                        LargeChange="5"
-                                        Maximum="59"
-                                        Minimum="0"
-                                        SmallChange="1"
-                                        SpinButtonPlacementMode="Compact"
-                                        Value="{Binding AutoSignMinute, Mode=TwoWay}" />
-                                </Grid>
-                            </StackPanel>
+                            <ToggleSwitch
+                                Header="{Binding DailyAutoSignSummary}"
+                                IsOn="{Binding DailyAutoSignEnabled, Mode=TwoWay}" />
                         </Border>
                     </Grid>
                 </Grid>

@@ -55,13 +55,12 @@ public sealed class MainViewModel : ObservableObject
     private bool _isSettingsPageOpen;
     private bool _useDarkTheme = true;
     private bool _autoSignEnabled = true;
+    private bool _dailyAutoSignEnabled = true;
     private bool _manualSignInAllGames;
     private bool _notificationsEnabled = true;
     private bool _startWithWindows;
-    private double _autoSignHour = 9;
-    private double _autoSignMinute;
     private bool _credentialsLoaded;
-    private DateOnly? _lastScheduledAutoSignDate;
+    private DateOnly? _lastDailyAutoSignDate;
     private bool _settingsLoaded;
     private bool _isApplyingSettings;
 
@@ -294,45 +293,27 @@ public sealed class MainViewModel : ObservableObject
         {
             if (SetProperty(ref _autoSignEnabled, value))
             {
-                OnPropertyChanged(nameof(AutoSignScheduleSummary));
                 _ = SaveSettingsAsync();
             }
         }
     }
 
-    public double AutoSignHour
+    public bool DailyAutoSignEnabled
     {
-        get => _autoSignHour;
+        get => _dailyAutoSignEnabled;
         set
         {
-            var hour = Math.Clamp(double.IsNaN(value) ? 9 : Math.Round(value), 0, 23);
-            if (SetProperty(ref _autoSignHour, hour))
+            if (SetProperty(ref _dailyAutoSignEnabled, value))
             {
-                OnPropertyChanged(nameof(AutoSignScheduleSummary));
+                OnPropertyChanged(nameof(DailyAutoSignSummary));
                 _ = SaveSettingsAsync();
             }
         }
     }
 
-    public double AutoSignMinute
-    {
-        get => _autoSignMinute;
-        set
-        {
-            var minute = Math.Clamp(double.IsNaN(value) ? 0 : Math.Round(value), 0, 59);
-            if (SetProperty(ref _autoSignMinute, minute))
-            {
-                OnPropertyChanged(nameof(AutoSignScheduleSummary));
-                _ = SaveSettingsAsync();
-            }
-        }
-    }
-
-    public TimeSpan AutoSignTime => new((int)AutoSignHour, (int)AutoSignMinute, 0);
-
-    public string AutoSignScheduleSummary => AutoSignEnabled
-        ? $"每天 {AutoSignHour:00}:{AutoSignMinute:00} 自动签到"
-        : "自动签到已关闭";
+    public string DailyAutoSignSummary => DailyAutoSignEnabled
+        ? "每天 00:01 自动签到"
+        : "每日自动签到已关闭";
 
     public bool ManualSignInAllGames
     {
@@ -676,22 +657,19 @@ public sealed class MainViewModel : ObservableObject
             var settings = await _settingsStore.LoadAsync(cancellationToken);
             UseDarkTheme = settings.UseDarkTheme;
             AutoSignEnabled = settings.AutoSignEnabled;
+            DailyAutoSignEnabled = settings.DailyAutoSignEnabled;
             ManualSignInAllGames = settings.ManualSignInAllGames;
             NotificationsEnabled = settings.NotificationsEnabled;
             StartWithWindows = settings.StartWithWindows || _startupService.IsEnabled();
             _arknightsAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.ArknightsAutoRefreshIntervalMinutes);
             _endfieldAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.EndfieldAutoRefreshIntervalMinutes);
             _wutheringWavesAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.WutheringWavesAutoRefreshIntervalMinutes);
-            _autoSignHour = NormalizeAutoSignHour(settings.AutoSignHour);
-            _autoSignMinute = NormalizeAutoSignMinute(settings.AutoSignMinute);
             OnPropertyChanged(nameof(AutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(AutoRefreshSummary));
             OnPropertyChanged(nameof(ArknightsAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(EndfieldAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(WutheringWavesAutoRefreshIntervalMinutes));
-            OnPropertyChanged(nameof(AutoSignHour));
-            OnPropertyChanged(nameof(AutoSignMinute));
-            OnPropertyChanged(nameof(AutoSignScheduleSummary));
+            OnPropertyChanged(nameof(DailyAutoSignSummary));
         }
         finally
         {
@@ -719,8 +697,7 @@ public sealed class MainViewModel : ObservableObject
                     _endfieldAutoRefreshIntervalMinutes,
                     _wutheringWavesAutoRefreshIntervalMinutes,
                     ManualSignInAllGames,
-                    (int)AutoSignHour,
-                    (int)AutoSignMinute),
+                    DailyAutoSignEnabled),
                 CancellationToken.None);
         }
         catch (Exception ex)
@@ -860,7 +837,7 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task TryStartupSignInAsync(CancellationToken cancellationToken)
     {
-        if (!TryReserveScheduledAutoSign(DateTime.Now))
+        if (!AutoSignEnabled)
         {
             return;
         }
@@ -868,25 +845,27 @@ public sealed class MainViewModel : ObservableObject
         await SignInAllAsync(cancellationToken, showNotification: NotificationsEnabled);
     }
 
-    public bool TryReserveScheduledAutoSign(DateTime now)
+    public bool TryReserveDailyAutoSign(DateTime now)
     {
-        if (!_credentialsLoaded || !AutoSignEnabled)
+        if (!_credentialsLoaded || !DailyAutoSignEnabled)
         {
             return false;
         }
 
-        if (now.TimeOfDay < AutoSignTime)
+        var dailyWindowStart = new TimeSpan(0, 1, 0);
+        var dailyWindowEnd = new TimeSpan(0, 2, 0);
+        if (now.TimeOfDay < dailyWindowStart || now.TimeOfDay >= dailyWindowEnd)
         {
             return false;
         }
 
         var today = DateOnly.FromDateTime(now);
-        if (_lastScheduledAutoSignDate == today)
+        if (_lastDailyAutoSignDate == today)
         {
             return false;
         }
 
-        _lastScheduledAutoSignDate = today;
+        _lastDailyAutoSignDate = today;
         return true;
     }
 
@@ -1459,15 +1438,6 @@ public sealed class MainViewModel : ObservableObject
         return Math.Clamp(double.IsNaN(value) || value <= 0 ? 5 : value, 1, 180);
     }
 
-    private static int NormalizeAutoSignHour(int value)
-    {
-        return Math.Clamp(value, 0, 23);
-    }
-
-    private static int NormalizeAutoSignMinute(int value)
-    {
-        return Math.Clamp(value, 0, 59);
-    }
 
     private void NotifySnapshotChanged()
     {

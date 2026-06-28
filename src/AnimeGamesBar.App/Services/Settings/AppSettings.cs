@@ -11,8 +11,7 @@ public sealed record AppSettings(
     double EndfieldAutoRefreshIntervalMinutes = 5,
     double WutheringWavesAutoRefreshIntervalMinutes = 5,
     bool ManualSignInAllGames = false,
-    int AutoSignHour = 9,
-    int AutoSignMinute = 0)
+    bool DailyAutoSignEnabled = true)
 {
     public static AppSettings Default { get; } = new(
         UseDarkTheme: true,
