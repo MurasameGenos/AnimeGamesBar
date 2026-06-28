@@ -92,7 +92,7 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
             Waveplates: ReadResource(data, "energyData", "结晶波片"),
             CrystalSolvent: ReadResource(data, "storeEnergyData", "结晶单质"),
             DailyActivity: ReadResource(data, "livenessData", "每日活跃度"),
-            WeeklyVoyage: ReadBattlePassWeeklyVoyage(data),
+            WeeklyVoyage: ReadWeeklyVoyage(data),
             WeeklyBoss: ReadResource(data, "weeklyData", "战歌重奏次数"),
             BattlePassLevel: ReadBattlePassLevel(data),
             TowerResetAt: ReadTimestamp(data, "towerData", "refreshTimeStamp"),
@@ -126,22 +126,21 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
             new WutheringWavesResourceStatus("先约电台等级", 0, 0);
     }
 
-    private static WutheringWavesResourceStatus ReadBattlePassWeeklyVoyage(JsonElement root)
+    private static WutheringWavesResourceStatus ReadWeeklyVoyage(JsonElement root)
     {
-        var entry = TryReadBattlePassEntry(
-            root,
-            "周度游历",
-            name => name.Contains("本周", StringComparison.OrdinalIgnoreCase) ||
-                name.Contains("周度", StringComparison.OrdinalIgnoreCase) ||
-                name.Contains("经验", StringComparison.OrdinalIgnoreCase) ||
-                name.Contains("游历", StringComparison.OrdinalIgnoreCase));
-
-        if (entry is not null)
+        var weeklyRouge = KuroClient.Get(root, "weeklyRougeData");
+        if (weeklyRouge.ValueKind == JsonValueKind.Object)
         {
-            return entry;
+            return ReadResource(root, "weeklyRougeData", "周度游历");
         }
 
-        return ReadResource(root, "weeklyRougeData", "周度游历");
+        var rouge = KuroClient.Get(root, "rougeData");
+        if (rouge.ValueKind == JsonValueKind.Object)
+        {
+            return ReadResource(root, "rougeData", "周度游历");
+        }
+
+        return new WutheringWavesResourceStatus("周度游历", 0, 6000);
     }
 
     private static WutheringWavesResourceStatus? TryReadBattlePassEntry(
