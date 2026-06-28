@@ -11,7 +11,9 @@ namespace AnimeGamesBar.App;
 
 public sealed partial class MainWindow : Window
 {
-    private readonly DispatcherTimer _autoRefreshTimer = new();
+    private readonly DispatcherTimer _arknightsAutoRefreshTimer = new();
+    private readonly DispatcherTimer _endfieldAutoRefreshTimer = new();
+    private readonly DispatcherTimer _wutheringWavesAutoRefreshTimer = new();
 
     public MainWindow(MainViewModel viewModel)
     {
@@ -20,7 +22,9 @@ public sealed partial class MainWindow : Window
         ViewModel.OwnerWindow = this;
         ViewModel.CredentialApplied += ViewModel_OnCredentialApplied;
         ViewModel.PropertyChanged += ViewModel_OnPropertyChanged;
-        _autoRefreshTimer.Tick += AutoRefreshTimer_OnTick;
+        _arknightsAutoRefreshTimer.Tick += ArknightsAutoRefreshTimer_OnTick;
+        _endfieldAutoRefreshTimer.Tick += EndfieldAutoRefreshTimer_OnTick;
+        _wutheringWavesAutoRefreshTimer.Tick += WutheringWavesAutoRefreshTimer_OnTick;
         Root.DataContext = ViewModel;
         Closed += MainWindow_OnClosed;
         SetDefaultSize();
@@ -55,7 +59,11 @@ public sealed partial class MainWindow : Window
 
     private void ViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainViewModel.AutoRefreshEnabled) or nameof(MainViewModel.AutoRefreshIntervalMinutes))
+        if (e.PropertyName is nameof(MainViewModel.AutoRefreshEnabled)
+            or nameof(MainViewModel.AutoRefreshIntervalMinutes)
+            or nameof(MainViewModel.ArknightsAutoRefreshIntervalMinutes)
+            or nameof(MainViewModel.EndfieldAutoRefreshIntervalMinutes)
+            or nameof(MainViewModel.WutheringWavesAutoRefreshIntervalMinutes))
         {
             UpdateAutoRefreshTimer();
         }
@@ -66,22 +74,44 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void AutoRefreshTimer_OnTick(object? sender, object e)
+    private void ArknightsAutoRefreshTimer_OnTick(object? sender, object e)
     {
-        if (ViewModel.AutoRefreshEnabled && ViewModel.RefreshAllCommand.CanExecute(null))
+        if (ViewModel.AutoRefreshEnabled && ViewModel.RefreshArknightsCommand.CanExecute(null))
         {
-            ViewModel.RefreshAllCommand.Execute(null);
+            ViewModel.RefreshArknightsCommand.Execute(null);
+        }
+    }
+
+    private void EndfieldAutoRefreshTimer_OnTick(object? sender, object e)
+    {
+        if (ViewModel.AutoRefreshEnabled && ViewModel.RefreshEndfieldCommand.CanExecute(null))
+        {
+            ViewModel.RefreshEndfieldCommand.Execute(null);
+        }
+    }
+
+    private void WutheringWavesAutoRefreshTimer_OnTick(object? sender, object e)
+    {
+        if (ViewModel.AutoRefreshEnabled && ViewModel.RefreshWutheringWavesCommand.CanExecute(null))
+        {
+            ViewModel.RefreshWutheringWavesCommand.Execute(null);
         }
     }
 
     private void UpdateAutoRefreshTimer()
     {
-        _autoRefreshTimer.Stop();
-        _autoRefreshTimer.Interval = TimeSpan.FromMinutes(ViewModel.AutoRefreshIntervalMinutes);
+        ConfigureAutoRefreshTimer(_arknightsAutoRefreshTimer, ViewModel.ArknightsAutoRefreshIntervalMinutes);
+        ConfigureAutoRefreshTimer(_endfieldAutoRefreshTimer, ViewModel.EndfieldAutoRefreshIntervalMinutes);
+        ConfigureAutoRefreshTimer(_wutheringWavesAutoRefreshTimer, ViewModel.WutheringWavesAutoRefreshIntervalMinutes);
+    }
 
+    private void ConfigureAutoRefreshTimer(DispatcherTimer timer, double minutes)
+    {
+        timer.Stop();
+        timer.Interval = TimeSpan.FromMinutes(Math.Clamp(double.IsNaN(minutes) ? 5 : minutes, 1, 180));
         if (ViewModel.AutoRefreshEnabled)
         {
-            _autoRefreshTimer.Start();
+            timer.Start();
         }
     }
 
@@ -147,9 +177,13 @@ public sealed partial class MainWindow : Window
 
     private void MainWindow_OnClosed(object sender, WindowEventArgs args)
     {
-        _autoRefreshTimer.Stop();
+        _arknightsAutoRefreshTimer.Stop();
+        _endfieldAutoRefreshTimer.Stop();
+        _wutheringWavesAutoRefreshTimer.Stop();
         ViewModel.PropertyChanged -= ViewModel_OnPropertyChanged;
         ViewModel.CredentialApplied -= ViewModel_OnCredentialApplied;
-        _autoRefreshTimer.Tick -= AutoRefreshTimer_OnTick;
+        _arknightsAutoRefreshTimer.Tick -= ArknightsAutoRefreshTimer_OnTick;
+        _endfieldAutoRefreshTimer.Tick -= EndfieldAutoRefreshTimer_OnTick;
+        _wutheringWavesAutoRefreshTimer.Tick -= WutheringWavesAutoRefreshTimer_OnTick;
     }
 }

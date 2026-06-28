@@ -6,7 +6,10 @@ public sealed record AppSettings(
     bool UseDarkTheme,
     bool AutoSignEnabled,
     bool NotificationsEnabled,
-    bool StartWithWindows)
+    bool StartWithWindows,
+    double ArknightsAutoRefreshIntervalMinutes = 5,
+    double EndfieldAutoRefreshIntervalMinutes = 5,
+    double WutheringWavesAutoRefreshIntervalMinutes = 5)
 {
     public static AppSettings Default { get; } = new(
         UseDarkTheme: true,

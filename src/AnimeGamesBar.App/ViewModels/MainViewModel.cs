@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using AnimeGamesBar.App.Models;
+using AnimeGamesBar.App.Services.Kuro;
 using AnimeGamesBar.App.Services.Notifications;
 using AnimeGamesBar.App.Services.Arknights;
 using AnimeGamesBar.App.Services.Settings;
@@ -19,14 +20,18 @@ public sealed class MainViewModel : ObservableObject
     private readonly IArknightsMonitor _monitor;
     private readonly ISklandLoginService _loginService;
     private readonly ISklandSignInService _signInService;
+    private readonly IKuroMonitor _kuroMonitor;
+    private readonly IKuroSignInService _kuroSignInService;
     private readonly ISettingsStore _settingsStore;
     private readonly IAppNotificationService _notificationService;
     private readonly IStartupService _startupService;
     private readonly List<ArknightsPlayerBinding> _arknightsBindings = new();
     private readonly List<ArknightsPlayerBinding> _endfieldBindings = new();
+    private readonly List<ArknightsPlayerBinding> _wutheringWavesBindings = new();
 
     private SklandCredential _arknightsCredential = SklandCredential.Empty;
     private SklandCredential _endfieldCredential = SklandCredential.Empty;
+    private SklandCredential _wutheringWavesCredential = SklandCredential.Empty;
     private string _cred = string.Empty;
     private string _token = string.Empty;
     private string _cookie = string.Empty;
@@ -37,11 +42,15 @@ public sealed class MainViewModel : ObservableObject
     private InfoBarSeverity _statusSeverity = InfoBarSeverity.Informational;
     private ArknightsPlayerBinding? _selectedArknightsBinding;
     private ArknightsPlayerBinding? _selectedEndfieldBinding;
+    private ArknightsPlayerBinding? _selectedWutheringWavesBinding;
     private ArknightsAccountStatus? _arknightsSnapshot;
     private EndfieldAccountStatus? _endfieldSnapshot;
+    private WutheringWavesAccountStatus? _wutheringWavesSnapshot;
     private GameDashboardKind _selectedGame = GameDashboardKind.Arknights;
     private bool _autoRefreshEnabled;
-    private double _autoRefreshIntervalMinutes = 5;
+    private double _arknightsAutoRefreshIntervalMinutes = 5;
+    private double _endfieldAutoRefreshIntervalMinutes = 5;
+    private double _wutheringWavesAutoRefreshIntervalMinutes = 5;
     private bool _isSettingsPageOpen;
     private bool _useDarkTheme = true;
     private bool _autoSignEnabled = true;
@@ -55,6 +64,8 @@ public sealed class MainViewModel : ObservableObject
         IArknightsMonitor monitor,
         ISklandLoginService loginService,
         ISklandSignInService signInService,
+        IKuroMonitor kuroMonitor,
+        IKuroSignInService kuroSignInService,
         ISettingsStore settingsStore,
         IAppNotificationService notificationService,
         IStartupService startupService)
@@ -63,12 +74,17 @@ public sealed class MainViewModel : ObservableObject
         _monitor = monitor;
         _loginService = loginService;
         _signInService = signInService;
+        _kuroMonitor = kuroMonitor;
+        _kuroSignInService = kuroSignInService;
         _settingsStore = settingsStore;
         _notificationService = notificationService;
         _startupService = startupService;
 
         RefreshCommand = new AsyncCommand(RefreshAsync);
         RefreshAllCommand = new AsyncCommand(RefreshAllAsync);
+        RefreshArknightsCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.Arknights, cancellationToken));
+        RefreshEndfieldCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.Endfield, cancellationToken));
+        RefreshWutheringWavesCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.WutheringWaves, cancellationToken));
         SignInCommand = new AsyncCommand(SignInAllAsync);
         SaveCredentialCommand = new AsyncCommand(SaveCredentialAsync);
         ClearCredentialCommand = new AsyncCommand(ClearCredentialAsync);
@@ -95,6 +111,12 @@ public sealed class MainViewModel : ObservableObject
             SelectGame(GameDashboardKind.Endfield);
             return Task.CompletedTask;
         });
+        SelectWutheringWavesCommand = new AsyncCommand(_ =>
+        {
+            IsSettingsPageOpen = false;
+            SelectGame(GameDashboardKind.WutheringWaves);
+            return Task.CompletedTask;
+        });
 
         _ = InitializeAsync();
     }
@@ -109,6 +131,12 @@ public sealed class MainViewModel : ObservableObject
 
     public AsyncCommand RefreshAllCommand { get; }
 
+    public AsyncCommand RefreshArknightsCommand { get; }
+
+    public AsyncCommand RefreshEndfieldCommand { get; }
+
+    public AsyncCommand RefreshWutheringWavesCommand { get; }
+
     public AsyncCommand SignInCommand { get; }
 
     public AsyncCommand SaveCredentialCommand { get; }
@@ -120,6 +148,8 @@ public sealed class MainViewModel : ObservableObject
     public AsyncCommand SelectArknightsCommand { get; }
 
     public AsyncCommand SelectEndfieldCommand { get; }
+
+    public AsyncCommand SelectWutheringWavesCommand { get; }
 
     public AsyncCommand OpenSettingsCommand { get; }
 
@@ -160,9 +190,13 @@ public sealed class MainViewModel : ObservableObject
         get => CurrentSelectedBinding();
         set
         {
-            var changed = _selectedGame == GameDashboardKind.Arknights
-                ? SetProperty(ref _selectedArknightsBinding, value)
-                : SetProperty(ref _selectedEndfieldBinding, value);
+            var changed = _selectedGame switch
+            {
+                GameDashboardKind.Arknights => SetProperty(ref _selectedArknightsBinding, value),
+                GameDashboardKind.Endfield => SetProperty(ref _selectedEndfieldBinding, value),
+                GameDashboardKind.WutheringWaves => SetProperty(ref _selectedWutheringWavesBinding, value),
+                _ => false
+            };
             if (changed)
             {
                 UpdateHeaderName();
@@ -185,16 +219,26 @@ public sealed class MainViewModel : ObservableObject
 
     public double AutoRefreshIntervalMinutes
     {
-        get => _autoRefreshIntervalMinutes;
+        get => GetAutoRefreshInterval(_selectedGame);
         set
         {
             var interval = Math.Clamp(double.IsNaN(value) ? 5 : value, 1, 180);
-            if (SetProperty(ref _autoRefreshIntervalMinutes, interval))
+            if (SetAutoRefreshInterval(_selectedGame, interval))
             {
                 OnPropertyChanged(nameof(AutoRefreshSummary));
+                OnPropertyChanged(nameof(ArknightsAutoRefreshIntervalMinutes));
+                OnPropertyChanged(nameof(EndfieldAutoRefreshIntervalMinutes));
+                OnPropertyChanged(nameof(WutheringWavesAutoRefreshIntervalMinutes));
+                _ = SaveSettingsAsync();
             }
         }
     }
+
+    public double ArknightsAutoRefreshIntervalMinutes => _arknightsAutoRefreshIntervalMinutes;
+
+    public double EndfieldAutoRefreshIntervalMinutes => _endfieldAutoRefreshIntervalMinutes;
+
+    public double WutheringWavesAutoRefreshIntervalMinutes => _wutheringWavesAutoRefreshIntervalMinutes;
 
     public string AutoRefreshSummary => AutoRefreshEnabled
         ? $"\u6BCF {AutoRefreshIntervalMinutes:0} \u5206\u949F\u5237\u65B0"
@@ -301,7 +345,25 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    public int GameSelectorThumbColumn => _selectedGame == GameDashboardKind.Arknights ? 0 : 1;
+    public bool IsWutheringWavesSelected
+    {
+        get => _selectedGame == GameDashboardKind.WutheringWaves;
+        set
+        {
+            if (value)
+            {
+                SelectGame(GameDashboardKind.WutheringWaves);
+            }
+        }
+    }
+
+    public int GameSelectorThumbColumn => _selectedGame switch
+    {
+        GameDashboardKind.Arknights => 0,
+        GameDashboardKind.Endfield => 1,
+        GameDashboardKind.WutheringWaves => 2,
+        _ => 0
+    };
 
     public Visibility ArknightsDashboardVisibility => _selectedGame == GameDashboardKind.Arknights
         ? Visibility.Visible
@@ -311,13 +373,29 @@ public sealed class MainViewModel : ObservableObject
         ? Visibility.Visible
         : Visibility.Collapsed;
 
-    public string SelectedGameTitle => _selectedGame == GameDashboardKind.Arknights
-        ? "\u660E\u65E5\u65B9\u821F"
-        : "\u660E\u65E5\u65B9\u821F\uFF1A\u7EC8\u672B\u5730";
+    public Visibility WutheringWavesDashboardVisibility => _selectedGame == GameDashboardKind.WutheringWaves
+        ? Visibility.Visible
+        : Visibility.Collapsed;
 
-    public string AccountPanelSubtitle => _selectedGame == GameDashboardKind.Arknights
-        ? "\u7F57\u5FB7\u5C9B\u8D26\u53F7\u4E0E\u5237\u65B0\u8BBE\u7F6E"
-        : "\u7EC8\u672B\u5730\u8D26\u53F7\u4E0E\u5237\u65B0\u8BBE\u7F6E";
+    public string SelectedGameTitle => GameTitle(_selectedGame);
+
+    public string AccountPanelSubtitle => _selectedGame switch
+    {
+        GameDashboardKind.Arknights => "\u7F57\u5FB7\u5C9B\u8D26\u53F7\u4E0E\u5237\u65B0\u8BBE\u7F6E",
+        GameDashboardKind.Endfield => "\u7EC8\u672B\u5730\u8D26\u53F7\u4E0E\u5237\u65B0\u8BBE\u7F6E",
+        GameDashboardKind.WutheringWaves => "\u5E93\u8857\u533A Token \u4E0E\u5237\u65B0\u8BBE\u7F6E",
+        _ => string.Empty
+    };
+
+    public string CredFieldHeader => _selectedGame == GameDashboardKind.WutheringWaves ? "\u5907\u6CE8\uFF08\u53EF\u7559\u7A7A\uFF09" : "Cred";
+
+    public string TokenFieldHeader => _selectedGame == GameDashboardKind.WutheringWaves ? "\u5E93\u8857\u533A Token" : "Token";
+
+    public string CookieFieldHeader => _selectedGame == GameDashboardKind.WutheringWaves ? "\u5907\u7528 Cookie\uFF08\u53EF\u7559\u7A7A\uFF09" : "Cookie";
+
+    public string UserIdFieldHeader => _selectedGame == GameDashboardKind.WutheringWaves ? "\u5E93\u8857\u533A User ID\uFF08\u81EA\u52A8\u586B\u5145\uFF09" : "User ID";
+
+    public string DeviceIdFieldHeader => _selectedGame == GameDashboardKind.WutheringWaves ? "\u8BBE\u5907 devCode" : "Device ID";
 
     public string DoctorName
     {
@@ -454,6 +532,54 @@ public sealed class MainViewModel : ObservableObject
 
     public string EndfieldPassLevelText => FormatProgress(_endfieldSnapshot?.PassLevel);
 
+    public int WutheringWaveplatesValue => _wutheringWavesSnapshot?.Waveplates.Current ?? 0;
+
+    public int WutheringWaveplatesMax => Math.Max(_wutheringWavesSnapshot?.Waveplates.Maximum ?? 1, 1);
+
+    public string WutheringWaveplatesText => FormatWuwaResource(_wutheringWavesSnapshot?.Waveplates);
+
+    public string WutheringWaveplatesRecoveryText => FormatCompletion("\u56DE\u6EE1", _wutheringWavesSnapshot?.Waveplates.RefreshAt);
+
+    public int WutheringCrystalSolventValue => _wutheringWavesSnapshot?.CrystalSolvent.Current ?? 0;
+
+    public int WutheringCrystalSolventMax => Math.Max(_wutheringWavesSnapshot?.CrystalSolvent.Maximum ?? 1, 1);
+
+    public string WutheringCrystalSolventText => FormatWuwaResource(_wutheringWavesSnapshot?.CrystalSolvent);
+
+    public int WutheringDailyActivityValue => _wutheringWavesSnapshot?.DailyActivity.Current ?? 0;
+
+    public int WutheringDailyActivityMax => Math.Max(_wutheringWavesSnapshot?.DailyActivity.Maximum ?? 1, 1);
+
+    public string WutheringDailyActivityText => FormatWuwaResource(_wutheringWavesSnapshot?.DailyActivity);
+
+    public int WutheringWeeklyVoyageValue => _wutheringWavesSnapshot?.WeeklyVoyage.Current ?? 0;
+
+    public int WutheringWeeklyVoyageMax => Math.Max(_wutheringWavesSnapshot?.WeeklyVoyage.Maximum ?? 1, 1);
+
+    public string WutheringWeeklyVoyageText => FormatWuwaResource(_wutheringWavesSnapshot?.WeeklyVoyage);
+
+    public int WutheringWeeklyBossValue => _wutheringWavesSnapshot?.WeeklyBoss.Current ?? 0;
+
+    public int WutheringWeeklyBossMax => Math.Max(_wutheringWavesSnapshot?.WeeklyBoss.Maximum ?? 1, 1);
+
+    public string WutheringWeeklyBossText => FormatWuwaResource(_wutheringWavesSnapshot?.WeeklyBoss);
+
+    public int WutheringBattlePassValue => _wutheringWavesSnapshot?.BattlePassLevel.Current ?? 0;
+
+    public int WutheringBattlePassMax => Math.Max(_wutheringWavesSnapshot?.BattlePassLevel.Maximum ?? 1, 1);
+
+    public string WutheringBattlePassText => _wutheringWavesSnapshot?.BattlePassLevel.Maximum > 0
+        ? FormatWuwaResource(_wutheringWavesSnapshot?.BattlePassLevel)
+        : $"{_wutheringWavesSnapshot?.BattlePassLevel.Current ?? 0}";
+
+    public string WutheringTowerResetText => FormatRefreshAt(_wutheringWavesSnapshot?.TowerResetAt);
+
+    public string WutheringSeaResetText => FormatRefreshAt(_wutheringWavesSnapshot?.SeaResetAt);
+
+    public string WutheringFinalBattleEndText => FormatCompleteAt("\u7ED3\u675F", _wutheringWavesSnapshot?.FinalBattleEndAt);
+
+    public string WutheringSignInText => _wutheringWavesSnapshot?.HasSignedIn == true ? "\u4ECA\u65E5\u5DF2\u7B7E\u5230" : "\u4ECA\u65E5\u672A\u7B7E\u5230";
+
     private async Task InitializeAsync()
     {
         await LoadSettingsAsync(CancellationToken.None);
@@ -461,11 +587,13 @@ public sealed class MainViewModel : ObservableObject
         var legacyCredential = await _credentialStore.LoadAsync(CancellationToken.None);
         var arknightsCredential = await _credentialStore.LoadAsync(CredentialScopeFor(GameDashboardKind.Arknights), CancellationToken.None);
         var endfieldCredential = await _credentialStore.LoadAsync(CredentialScopeFor(GameDashboardKind.Endfield), CancellationToken.None);
+        var wutheringWavesCredential = await _credentialStore.LoadAsync(CredentialScopeFor(GameDashboardKind.WutheringWaves), CancellationToken.None);
 
         _arknightsCredential = arknightsCredential ?? legacyCredential ?? SklandCredential.Empty;
         _endfieldCredential = endfieldCredential ?? legacyCredential ?? SklandCredential.Empty;
+        _wutheringWavesCredential = wutheringWavesCredential ?? SklandCredential.Empty;
 
-        if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret)
+        if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret && !_wutheringWavesCredential.HasAnySecret)
         {
             SetStatus("\u672A\u627E\u5230\u672C\u5730\u51ED\u636E\u3002", InfoBarSeverity.Informational);
             return;
@@ -488,6 +616,14 @@ public sealed class MainViewModel : ObservableObject
             AutoSignEnabled = settings.AutoSignEnabled;
             NotificationsEnabled = settings.NotificationsEnabled;
             StartWithWindows = settings.StartWithWindows || _startupService.IsEnabled();
+            _arknightsAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.ArknightsAutoRefreshIntervalMinutes);
+            _endfieldAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.EndfieldAutoRefreshIntervalMinutes);
+            _wutheringWavesAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.WutheringWavesAutoRefreshIntervalMinutes);
+            OnPropertyChanged(nameof(AutoRefreshIntervalMinutes));
+            OnPropertyChanged(nameof(AutoRefreshSummary));
+            OnPropertyChanged(nameof(ArknightsAutoRefreshIntervalMinutes));
+            OnPropertyChanged(nameof(EndfieldAutoRefreshIntervalMinutes));
+            OnPropertyChanged(nameof(WutheringWavesAutoRefreshIntervalMinutes));
         }
         finally
         {
@@ -506,7 +642,14 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             await _settingsStore.SaveAsync(
-                new AppSettings(UseDarkTheme, AutoSignEnabled, NotificationsEnabled, StartWithWindows),
+                new AppSettings(
+                    UseDarkTheme,
+                    AutoSignEnabled,
+                    NotificationsEnabled,
+                    StartWithWindows,
+                    _arknightsAutoRefreshIntervalMinutes,
+                    _endfieldAutoRefreshIntervalMinutes,
+                    _wutheringWavesAutoRefreshIntervalMinutes),
                 CancellationToken.None);
         }
         catch (Exception ex)
@@ -540,7 +683,7 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             CommitCurrentCredentialFields();
-            if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret)
+            if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret && !_wutheringWavesCredential.HasAnySecret)
             {
                 SetStatus("\u7F3A\u5C11\u8D26\u53F7\u51ED\u636E\u3002", InfoBarSeverity.Warning);
                 return;
@@ -557,6 +700,11 @@ public sealed class MainViewModel : ObservableObject
                 refreshed += await RefreshGameAsync(GameDashboardKind.Endfield, _endfieldCredential, cancellationToken, showStatus: false) ? 1 : 0;
             }
 
+            if (_wutheringWavesCredential.HasAnySecret)
+            {
+                refreshed += await RefreshGameAsync(GameDashboardKind.WutheringWaves, _wutheringWavesCredential, cancellationToken, showStatus: false) ? 1 : 0;
+            }
+
             if (refreshed == 0)
             {
                 SetStatus("\u6CA1\u6709\u627E\u5230\u5DF2\u7ED1\u5B9A\u7684\u6E38\u620F\u8D26\u53F7\u3002", InfoBarSeverity.Warning);
@@ -570,6 +718,28 @@ public sealed class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             SetStatus(ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    private async Task RefreshAutoGameAsync(GameDashboardKind game, CancellationToken cancellationToken)
+    {
+        try
+        {
+            CommitCurrentCredentialFields();
+            var credential = GetCredentialFor(game);
+            if (!credential.HasAnySecret)
+            {
+                return;
+            }
+
+            await RefreshGameAsync(game, credential, cancellationToken, showStatus: game == _selectedGame);
+        }
+        catch (Exception ex)
+        {
+            if (game == _selectedGame)
+            {
+                SetStatus(ex.Message, InfoBarSeverity.Error);
+            }
         }
     }
 
@@ -593,7 +763,7 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             CommitCurrentCredentialFields();
-            if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret)
+            if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret && !_wutheringWavesCredential.HasAnySecret)
             {
                 SetStatus("\u81EA\u52A8\u7B7E\u5230\u8DF3\u8FC7\uFF1A\u7F3A\u5C11\u8D26\u53F7\u51ED\u636E\u3002", InfoBarSeverity.Warning);
                 return;
@@ -610,6 +780,11 @@ public sealed class MainViewModel : ObservableObject
                 results.AddRange(await SignInGameAsync(GameDashboardKind.Endfield, _endfieldCredential, cancellationToken));
             }
 
+            if (_wutheringWavesCredential.HasAnySecret)
+            {
+                results.AddRange(await SignInGameAsync(GameDashboardKind.WutheringWaves, _wutheringWavesCredential, cancellationToken));
+            }
+
             if (results.Count == 0)
             {
                 SetStatus("\u6CA1\u6709\u627E\u5230\u53EF\u7B7E\u5230\u7684\u7ED1\u5B9A\u89D2\u8272\u3002", InfoBarSeverity.Warning);
@@ -620,10 +795,10 @@ public sealed class MainViewModel : ObservableObject
             var alreadySigned = results.Count(result => result.State == SklandSignInState.AlreadySigned);
             var succeeded = results.Count(result => result.State == SklandSignInState.Success);
             var title = failed > 0
-                ? "\u68EE\u7A7A\u5C9B\u7B7E\u5230\u5B8C\u6210\uFF0C\u90E8\u5206\u5931\u8D25"
+                ? "\u6E38\u620F\u7B7E\u5230\u5B8C\u6210\uFF0C\u90E8\u5206\u5931\u8D25"
                 : succeeded == 0 && alreadySigned > 0
-                    ? "\u68EE\u7A7A\u5C9B\u4ECA\u65E5\u5DF2\u7B7E\u5230"
-                    : "\u68EE\u7A7A\u5C9B\u7B7E\u5230\u5B8C\u6210";
+                    ? "\u4ECA\u65E5\u5DF2\u7B7E\u5230"
+                    : "\u6E38\u620F\u7B7E\u5230\u5B8C\u6210";
             var message = BuildSignInSummary(results);
 
             SetStatus(message, failed > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
@@ -638,7 +813,7 @@ public sealed class MainViewModel : ObservableObject
             SetStatus(message, InfoBarSeverity.Error);
             if (showNotification)
             {
-                await _notificationService.ShowAsync("\u68EE\u7A7A\u5C9B\u7B7E\u5230\u5931\u8D25", message, cancellationToken);
+                await _notificationService.ShowAsync("\u6E38\u620F\u7B7E\u5230\u5931\u8D25", message, cancellationToken);
             }
         }
     }
@@ -653,6 +828,17 @@ public sealed class MainViewModel : ObservableObject
         if (bindings.Length == 0)
         {
             return Array.Empty<SklandSignInResult>();
+        }
+
+        if (game == GameDashboardKind.WutheringWaves)
+        {
+            var kuroResults = new List<SklandSignInResult>();
+            foreach (var binding in bindings)
+            {
+                kuroResults.Add(await _kuroSignInService.SignInAsync(credential, binding, cancellationToken));
+            }
+
+            return kuroResults;
         }
 
         return await _signInService.SignInAsync(credential, game, bindings, cancellationToken);
@@ -684,10 +870,15 @@ public sealed class MainViewModel : ObservableObject
             _arknightsSnapshot = await _monitor.GetStatusAsync(credential, selectedBinding, cancellationToken);
             updatedAt = _arknightsSnapshot.UpdatedAt;
         }
-        else
+        else if (game == GameDashboardKind.Endfield)
         {
             _endfieldSnapshot = await _monitor.GetEndfieldStatusAsync(credential, selectedBinding, cancellationToken);
             updatedAt = _endfieldSnapshot.UpdatedAt;
+        }
+        else
+        {
+            _wutheringWavesSnapshot = await _kuroMonitor.GetStatusAsync(credential, selectedBinding, cancellationToken);
+            updatedAt = _wutheringWavesSnapshot.UpdatedAt;
         }
 
         if (game == _selectedGame)
@@ -717,21 +908,43 @@ public sealed class MainViewModel : ObservableObject
         var target = BindingCache(game);
         if (target.Count == 0)
         {
-            var bindingResult = await _monitor.GetBindingsAsync(credential, AppCodeFor(game), cancellationToken);
-            if (!string.IsNullOrWhiteSpace(bindingResult.ResolvedUserId) &&
-                !string.Equals(credential.UserId, bindingResult.ResolvedUserId, StringComparison.Ordinal))
+            if (game == GameDashboardKind.WutheringWaves)
             {
-                credential = credential with { UserId = bindingResult.ResolvedUserId };
-                SetCredentialFor(game, credential);
-                await SaveCredentialForGameAsync(game, credential, cancellationToken);
-                if (game == _selectedGame)
+                var bindings = await _kuroMonitor.GetBindingsAsync(credential, cancellationToken);
+                var resolvedUserId = bindings.FirstOrDefault()?.UserId;
+                if (!string.IsNullOrWhiteSpace(resolvedUserId) &&
+                    !string.Equals(credential.UserId, resolvedUserId, StringComparison.Ordinal))
                 {
-                    ApplyCredential(credential);
+                    credential = credential with { UserId = resolvedUserId };
+                    SetCredentialFor(game, credential);
+                    await SaveCredentialForGameAsync(game, credential, cancellationToken);
+                    if (game == _selectedGame)
+                    {
+                        ApplyCredential(credential);
+                    }
                 }
-            }
 
-            target.Clear();
-            target.AddRange(bindingResult.Bindings);
+                target.Clear();
+                target.AddRange(bindings);
+            }
+            else
+            {
+                var bindingResult = await _monitor.GetBindingsAsync(credential, AppCodeFor(game), cancellationToken);
+                if (!string.IsNullOrWhiteSpace(bindingResult.ResolvedUserId) &&
+                    !string.Equals(credential.UserId, bindingResult.ResolvedUserId, StringComparison.Ordinal))
+                {
+                    credential = credential with { UserId = bindingResult.ResolvedUserId };
+                    SetCredentialFor(game, credential);
+                    await SaveCredentialForGameAsync(game, credential, cancellationToken);
+                    if (game == _selectedGame)
+                    {
+                        ApplyCredential(credential);
+                    }
+                }
+
+                target.Clear();
+                target.AddRange(bindingResult.Bindings);
+            }
         }
 
         if (game == _selectedGame)
@@ -758,9 +971,13 @@ public sealed class MainViewModel : ObservableObject
         {
             _arknightsSnapshot = null;
         }
-        else
+        else if (game == GameDashboardKind.Endfield)
         {
             _endfieldSnapshot = null;
+        }
+        else
+        {
+            _wutheringWavesSnapshot = null;
         }
 
         DoctorName = "\u672A\u767B\u5F55";
@@ -780,6 +997,12 @@ public sealed class MainViewModel : ObservableObject
 
             CommitCurrentCredentialFields();
             var game = _selectedGame;
+            if (game == GameDashboardKind.WutheringWaves)
+            {
+                SetStatus("\u9E23\u6F6E\u8BF7\u624B\u52A8\u586B\u5165\u5E93\u8857\u533A Token\uFF0C\u7136\u540E\u70B9\u51FB\u4FDD\u5B58\u6216\u5237\u65B0\u3002", InfoBarSeverity.Informational);
+                return;
+            }
+
             var previousCredential = GetCredentialFor(game);
             var credential = await _loginService.LoginAsync(OwnerWindow, previousCredential, cancellationToken);
             if (credential is null)
@@ -805,9 +1028,13 @@ public sealed class MainViewModel : ObservableObject
                 {
                     _arknightsSnapshot = null;
                 }
-                else
+                else if (game == GameDashboardKind.Endfield)
                 {
                     _endfieldSnapshot = null;
+                }
+                else
+                {
+                    _wutheringWavesSnapshot = null;
                 }
 
                 NotifySnapshotChanged();
@@ -876,12 +1103,24 @@ public sealed class MainViewModel : ObservableObject
 
     private static string CredentialScopeFor(GameDashboardKind game)
     {
-        return game == GameDashboardKind.Arknights ? "arknights" : "endfield";
+        return game switch
+        {
+            GameDashboardKind.Arknights => "arknights",
+            GameDashboardKind.Endfield => "endfield",
+            GameDashboardKind.WutheringWaves => "wutheringwaves",
+            _ => "default"
+        };
     }
 
     private SklandCredential GetCredentialFor(GameDashboardKind game)
     {
-        return game == GameDashboardKind.Arknights ? _arknightsCredential : _endfieldCredential;
+        return game switch
+        {
+            GameDashboardKind.Arknights => _arknightsCredential,
+            GameDashboardKind.Endfield => _endfieldCredential,
+            GameDashboardKind.WutheringWaves => _wutheringWavesCredential,
+            _ => SklandCredential.Empty
+        };
     }
 
     private void SetCredentialFor(GameDashboardKind game, SklandCredential credential)
@@ -890,9 +1129,13 @@ public sealed class MainViewModel : ObservableObject
         {
             _arknightsCredential = credential;
         }
-        else
+        else if (game == GameDashboardKind.Endfield)
         {
             _endfieldCredential = credential;
+        }
+        else if (game == GameDashboardKind.WutheringWaves)
+        {
+            _wutheringWavesCredential = credential;
         }
     }
 
@@ -903,7 +1146,13 @@ public sealed class MainViewModel : ObservableObject
 
     private List<ArknightsPlayerBinding> BindingCache(GameDashboardKind game)
     {
-        return game == GameDashboardKind.Arknights ? _arknightsBindings : _endfieldBindings;
+        return game switch
+        {
+            GameDashboardKind.Arknights => _arknightsBindings,
+            GameDashboardKind.Endfield => _endfieldBindings,
+            GameDashboardKind.WutheringWaves => _wutheringWavesBindings,
+            _ => _arknightsBindings
+        };
     }
 
     private List<ArknightsPlayerBinding> CurrentBindingCache()
@@ -918,7 +1167,13 @@ public sealed class MainViewModel : ObservableObject
 
     private ArknightsPlayerBinding? GetSelectedBinding(GameDashboardKind game)
     {
-        return game == GameDashboardKind.Arknights ? _selectedArknightsBinding : _selectedEndfieldBinding;
+        return game switch
+        {
+            GameDashboardKind.Arknights => _selectedArknightsBinding,
+            GameDashboardKind.Endfield => _selectedEndfieldBinding,
+            GameDashboardKind.WutheringWaves => _selectedWutheringWavesBinding,
+            _ => null
+        };
     }
 
     private void SetSelectedBinding(GameDashboardKind game, ArknightsPlayerBinding? binding)
@@ -927,17 +1182,25 @@ public sealed class MainViewModel : ObservableObject
         {
             _selectedArknightsBinding = binding;
         }
-        else
+        else if (game == GameDashboardKind.Endfield)
         {
             _selectedEndfieldBinding = binding;
+        }
+        else if (game == GameDashboardKind.WutheringWaves)
+        {
+            _selectedWutheringWavesBinding = binding;
         }
     }
 
     private static string GameTitle(GameDashboardKind game)
     {
-        return game == GameDashboardKind.Arknights
-            ? "\u660E\u65E5\u65B9\u821F"
-            : "\u660E\u65E5\u65B9\u821F\uFF1A\u7EC8\u672B\u5730";
+        return game switch
+        {
+            GameDashboardKind.Arknights => "\u660E\u65E5\u65B9\u821F",
+            GameDashboardKind.Endfield => "\u7EC8\u672B\u5730",
+            GameDashboardKind.WutheringWaves => "\u9E23\u6F6E",
+            _ => string.Empty
+        };
     }
 
     private void SyncDisplayedBindings()
@@ -976,6 +1239,7 @@ public sealed class MainViewModel : ObservableObject
         {
             GameDashboardKind.Arknights => _arknightsSnapshot?.DoctorName ?? SelectedPlayerBinding?.NickName ?? "\u672A\u767B\u5F55",
             GameDashboardKind.Endfield => _endfieldSnapshot?.PlayerName ?? SelectedPlayerBinding?.NickName ?? "\u672A\u767B\u5F55",
+            GameDashboardKind.WutheringWaves => _wutheringWavesSnapshot?.PlayerName ?? SelectedPlayerBinding?.NickName ?? "\u672A\u767B\u5F55",
             _ => "\u672A\u767B\u5F55"
         };
     }
@@ -1000,6 +1264,34 @@ public sealed class MainViewModel : ObservableObject
                 };
                 return $"[{result.GameName}] {result.RoleName} {state}\uFF1A{result.Message}";
             }));
+    }
+
+    private double GetAutoRefreshInterval(GameDashboardKind game)
+    {
+        return game switch
+        {
+            GameDashboardKind.Arknights => _arknightsAutoRefreshIntervalMinutes,
+            GameDashboardKind.Endfield => _endfieldAutoRefreshIntervalMinutes,
+            GameDashboardKind.WutheringWaves => _wutheringWavesAutoRefreshIntervalMinutes,
+            _ => 5
+        };
+    }
+
+    private bool SetAutoRefreshInterval(GameDashboardKind game, double value)
+    {
+        value = NormalizeAutoRefreshInterval(value);
+        return game switch
+        {
+            GameDashboardKind.Arknights => SetProperty(ref _arknightsAutoRefreshIntervalMinutes, value, nameof(AutoRefreshIntervalMinutes)),
+            GameDashboardKind.Endfield => SetProperty(ref _endfieldAutoRefreshIntervalMinutes, value, nameof(AutoRefreshIntervalMinutes)),
+            GameDashboardKind.WutheringWaves => SetProperty(ref _wutheringWavesAutoRefreshIntervalMinutes, value, nameof(AutoRefreshIntervalMinutes)),
+            _ => false
+        };
+    }
+
+    private static double NormalizeAutoRefreshInterval(double value)
+    {
+        return Math.Clamp(double.IsNaN(value) || value <= 0 ? 5 : value, 1, 180);
     }
 
     private void NotifySnapshotChanged()
@@ -1050,6 +1342,29 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(EndfieldPassLevelValue));
         OnPropertyChanged(nameof(EndfieldPassLevelMax));
         OnPropertyChanged(nameof(EndfieldPassLevelText));
+        OnPropertyChanged(nameof(WutheringWaveplatesValue));
+        OnPropertyChanged(nameof(WutheringWaveplatesMax));
+        OnPropertyChanged(nameof(WutheringWaveplatesText));
+        OnPropertyChanged(nameof(WutheringWaveplatesRecoveryText));
+        OnPropertyChanged(nameof(WutheringCrystalSolventValue));
+        OnPropertyChanged(nameof(WutheringCrystalSolventMax));
+        OnPropertyChanged(nameof(WutheringCrystalSolventText));
+        OnPropertyChanged(nameof(WutheringDailyActivityValue));
+        OnPropertyChanged(nameof(WutheringDailyActivityMax));
+        OnPropertyChanged(nameof(WutheringDailyActivityText));
+        OnPropertyChanged(nameof(WutheringWeeklyVoyageValue));
+        OnPropertyChanged(nameof(WutheringWeeklyVoyageMax));
+        OnPropertyChanged(nameof(WutheringWeeklyVoyageText));
+        OnPropertyChanged(nameof(WutheringWeeklyBossValue));
+        OnPropertyChanged(nameof(WutheringWeeklyBossMax));
+        OnPropertyChanged(nameof(WutheringWeeklyBossText));
+        OnPropertyChanged(nameof(WutheringBattlePassValue));
+        OnPropertyChanged(nameof(WutheringBattlePassMax));
+        OnPropertyChanged(nameof(WutheringBattlePassText));
+        OnPropertyChanged(nameof(WutheringTowerResetText));
+        OnPropertyChanged(nameof(WutheringSeaResetText));
+        OnPropertyChanged(nameof(WutheringFinalBattleEndText));
+        OnPropertyChanged(nameof(WutheringSignInText));
     }
 
     private void NotifyAccountChanged()
@@ -1061,11 +1376,20 @@ public sealed class MainViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsArknightsSelected));
         OnPropertyChanged(nameof(IsEndfieldSelected));
+        OnPropertyChanged(nameof(IsWutheringWavesSelected));
         OnPropertyChanged(nameof(GameSelectorThumbColumn));
         OnPropertyChanged(nameof(ArknightsDashboardVisibility));
         OnPropertyChanged(nameof(EndfieldDashboardVisibility));
+        OnPropertyChanged(nameof(WutheringWavesDashboardVisibility));
         OnPropertyChanged(nameof(SelectedGameTitle));
         OnPropertyChanged(nameof(AccountPanelSubtitle));
+        OnPropertyChanged(nameof(CredFieldHeader));
+        OnPropertyChanged(nameof(TokenFieldHeader));
+        OnPropertyChanged(nameof(CookieFieldHeader));
+        OnPropertyChanged(nameof(UserIdFieldHeader));
+        OnPropertyChanged(nameof(DeviceIdFieldHeader));
+        OnPropertyChanged(nameof(AutoRefreshIntervalMinutes));
+        OnPropertyChanged(nameof(AutoRefreshSummary));
         OnPropertyChanged(nameof(AccountBadgeText));
     }
 
@@ -1077,6 +1401,21 @@ public sealed class MainViewModel : ObservableObject
     private static string FormatProgress(ProgressStatus? progress)
     {
         return progress is null ? "0/0" : $"{progress.Current}/{progress.Maximum}";
+    }
+
+    private static string FormatWuwaResource(WutheringWavesResourceStatus? status)
+    {
+        if (status is null)
+        {
+            return "0/0";
+        }
+
+        if (!string.IsNullOrWhiteSpace(status.Value))
+        {
+            return status.Value;
+        }
+
+        return status.Maximum > 0 ? $"{status.Current}/{status.Maximum}" : $"{status.Current}";
     }
 
     private static string FormatCompletion(string label, DateTimeOffset? completeAt)

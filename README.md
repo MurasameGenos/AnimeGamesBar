@@ -1,40 +1,101 @@
 # AnimeGames Bar
 
-Windows desktop monitor for anime game account status.
+AnimeGames Bar 是一个 WinUI 3 桌面状态栏，用来集中查看常用二游账号状态、自动刷新数据，并在启动时执行每日签到。
 
-## First MVP
+## 当前版本
 
-The first adapter targets Arknights through the official Skland community surface.
+- 当前开发版本：v1.1
+- v1.0 稳定点：明日方舟、明日方舟：终末地支持
+- 数据来源：森空岛、库街区等社区/官方应用接口
 
-Tracked fields:
+## 功能
 
-- Sanity
-- Base drones
-- Training room operator, skill, and remaining time
-- Weekly annihilation progress
-- Stationary Security Service reward progress
+- 顶部滑块切换游戏。
+- 每个游戏独立保存账号凭据。
+- 每个游戏可设置独立自动刷新频率。
+- 启动时可自动签到，并通过 Windows 通知显示结果。
+- 设置页支持明暗模式、自动签到、Windows 通知、开机自启。
 
-## Security
+## 已支持游戏
 
-Account-specific tokens, cookies, and Skland credentials are stored locally in Windows Credential Locker through `Windows.Security.Credentials.PasswordVault`.
+### 明日方舟
 
-## Project Layout
+- 理智与回满时间。
+- 无人机与回满时间。
+- 训练室干员、技能、剩余时间、完成时间。
+- 订单进度、制造进度、干员疲劳。
+- 每周剿灭。
+- 保全派驻数据增补仪、数据增补条与刷新时间。
+- 森空岛签到。
 
-- `src/AnimeGamesBar.App` - WinUI 3 desktop app
-- `src/AnimeGamesBar.App/Services/Arknights` - Arknights monitor adapter
-- `src/AnimeGamesBar.App/Services/Skland` - Skland HTTP/auth/credential infrastructure
+### 明日方舟：终末地
 
-## Build Notes
+- 理智。
+- 每日活跃度。
+- 每周事务。
+- 通行证等级。
+- 森空岛签到。
 
-This repository expects Visual Studio 2022 with .NET desktop development, Windows application development, and the Windows App SDK toolchain. If `dotnet` is not in PATH, open the solution from Visual Studio or install/configure the .NET SDK first.
+### 鸣潮
 
-On this machine, the local build script uses:
+- 结晶波片。
+- 结晶单质。
+- 每日活跃度。
+- 周度游历。
+- 战歌重奏次数。
+- 先约电台等级。
+- 逆境深塔周期重置时间。
+- 冥歌海墟周期重置时间。
+- 终焉决战结束时间。
+- 库街区游戏签到。
 
-- .NET SDK: `D:\Users\unnat\dotnet`
-- Visual Studio Build Tools: `D:\Program Files\Microsoft Visual Studio\2022\BuildTools`
-- NuGet package cache: `D:\Users\unnat\.nuget\packages`
+鸣潮目前使用库街区 Token 接入：在鸣潮页的账号信息栏填写“库街区 Token”，保存后刷新即可自动读取绑定角色和小组件数据。
+
+## 安全说明
+
+- 凭据默认保存在 Windows Credential Locker。
+- 如果 Credential Locker 不可用，会写入 `%LOCALAPPDATA%\AnimeGamesBar` 下的 DPAPI 加密备用文件。
+- 不要提交真实 token、cookie、调试 dump 或包含账号敏感信息的截图。
+
+## 构建
+
+需要 Visual Studio 2022、.NET 8、Windows App SDK。
 
 ```powershell
-.\scripts\build.ps1
-.\scripts\run.ps1
+dotnet build -c Release -p:Platform=x64
 ```
+
+运行 Release 版：
+
+```powershell
+.\src\AnimeGamesBar.App\bin\x64\Release\net8.0-windows10.0.19041.0\AnimeGamesBar.App.exe
+```
+
+## 项目结构
+
+- `src/AnimeGamesBar.App`：WinUI 3 桌面应用。
+- `src/AnimeGamesBar.App/Services/Skland`：森空岛请求、凭据、签到。
+- `src/AnimeGamesBar.App/Services/Arknights`：明日方舟与终末地数据适配。
+- `src/AnimeGamesBar.App/Services/Kuro`：库街区与鸣潮数据适配。
+- `src/AnimeGamesBar.App/Services/Settings`：本地设置。
+- `src/AnimeGamesBar.App/Services/Notifications`：Windows 通知。
+- `src/AnimeGamesBar.App/Services/Startup`：开机自启。
+
+## 更新日志
+
+### v1.1
+
+- 新增鸣潮支持。
+- 新增库街区 Token 凭据保存、绑定角色读取、数据终端展示。
+- 新增鸣潮库街区游戏签到。
+- 自动刷新频率改为每个游戏独立设置。
+- 修复顶部“每 X 分钟刷新”文本垂直不居中。
+- README 改为中文并补充版本说明。
+
+### v1.0
+
+- 支持明日方舟与明日方舟：终末地。
+- 支持森空岛登录、凭据持久化、跨游戏独立账号。
+- 支持理智、无人机、训练室、订单、制造、干员疲劳、剿灭、保全派驻等数据。
+- 支持终末地理智、每日活跃度、每周事务、通行证等级。
+- 支持森空岛自动签到、Windows 通知、明暗模式、开机自启。

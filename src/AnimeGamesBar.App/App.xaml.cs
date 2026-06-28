@@ -1,5 +1,6 @@
 using AnimeGamesBar.App.Services;
 using AnimeGamesBar.App.Services.Arknights;
+using AnimeGamesBar.App.Services.Kuro;
 using AnimeGamesBar.App.Services.Notifications;
 using AnimeGamesBar.App.Services.Settings;
 using AnimeGamesBar.App.Services.Skland;
@@ -30,6 +31,9 @@ public partial class App : Application
         var monitor = new SklandArknightsMonitor(sklandClient);
         var login = new SklandLoginService();
         var signIn = new SklandSignInService(sklandClient);
+        var kuroClient = new KuroClient(httpClient);
+        var kuroMonitor = new KuroWutheringWavesMonitor(kuroClient);
+        var kuroSignIn = new KuroSignInService(kuroClient);
         var settingsStore = new JsonSettingsStore();
         var notificationService = new WindowsAppNotificationService();
         var startupService = new RegistryStartupService();
@@ -40,6 +44,8 @@ public partial class App : Application
             monitor,
             login,
             signIn,
+            kuroMonitor,
+            kuroSignIn,
             settingsStore,
             notificationService,
             startupService);

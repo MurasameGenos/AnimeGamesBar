@@ -68,7 +68,7 @@
                 Orientation="Horizontal"
                 Spacing="16">
                 <Border
-                    Width="240"
+                    Width="330"
                     Height="34"
                     Background="{StaticResource AppButtonBrush}"
                     BorderBrush="{StaticResource AppBorderBrush}"
@@ -76,6 +76,7 @@
                     CornerRadius="4">
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
@@ -117,9 +118,28 @@
                                 HorizontalAlignment="Center"
                                 Text="&#x7EC8;&#x672B;&#x5730;" />
                         </Button>
+
+                        <Button
+                            Grid.Column="2"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Padding="0"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Command="{Binding SelectWutheringWavesCommand}"
+                            Foreground="{StaticResource AppTextBrush}">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                Text="&#x9E23;&#x6F6E;" />
+                        </Button>
                     </Grid>
                 </Border>
-                <TextBlock Foreground="{StaticResource AppMutedTextBrush}" Text="{Binding AutoRefreshSummary}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Foreground="{StaticResource AppMutedTextBrush}"
+                    Text="{Binding AutoRefreshSummary}" />
             </StackPanel>
 
             <StackPanel
@@ -233,25 +253,25 @@
                             SelectedItem="{Binding SelectedPlayerBinding, Mode=TwoWay}" />
 
                         <TextBox
-                            Header="Cred"
+                            Header="{Binding CredFieldHeader}"
                             Text="{Binding Cred, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                         <PasswordBox
                             x:Name="TokenBox"
-                            Header="Token"
+                            Header="{Binding TokenFieldHeader}"
                             PasswordChanged="TokenBox_OnPasswordChanged" />
 
                         <PasswordBox
                             x:Name="CookieBox"
-                            Header="Cookie"
+                            Header="{Binding CookieFieldHeader}"
                             PasswordChanged="CookieBox_OnPasswordChanged" />
 
                         <TextBox
-                            Header="User ID"
+                            Header="{Binding UserIdFieldHeader}"
                             Text="{Binding UserId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                         <TextBox
-                            Header="Device ID"
+                            Header="{Binding DeviceIdFieldHeader}"
                             Text="{Binding DeviceId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                         <Border
@@ -561,6 +581,167 @@
                                 <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding EndfieldPassLevelText}" />
                                 <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding EndfieldPassLevelMax}" Value="{Binding EndfieldPassLevelValue}" />
                                 <TextBlock Style="{StaticResource MutedTextStyle}" Text="Battle Pass" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+
+                <ScrollViewer
+                    Grid.Row="1"
+                    VerticalScrollBarVisibility="Auto"
+                    Visibility="{Binding WutheringWavesDashboardVisibility}">
+                    <Grid ColumnSpacing="16" RowSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Border
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x7ED3;&#x6676;&#x6CE2;&#x7247;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding WutheringWaveplatesText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding WutheringWaveplatesMax}" Value="{Binding WutheringWaveplatesValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding WutheringWaveplatesRecoveryText}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x7ED3;&#x6676;&#x5355;&#x8D28;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding WutheringCrystalSolventText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding WutheringCrystalSolventMax}" Value="{Binding WutheringCrystalSolventValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="Crystal Solvent" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x6BCF;&#x65E5;&#x6D3B;&#x8DC3;&#x5EA6;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding WutheringDailyActivityText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding WutheringDailyActivityMax}" Value="{Binding WutheringDailyActivityValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding WutheringSignInText}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x5468;&#x5EA6;&#x6E38;&#x5386;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding WutheringWeeklyVoyageText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding WutheringWeeklyVoyageMax}" Value="{Binding WutheringWeeklyVoyageValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="Weekly Rouge" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="2"
+                            Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x6218;&#x6B4C;&#x91CD;&#x594F;&#x6B21;&#x6570;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding WutheringWeeklyBossText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding WutheringWeeklyBossMax}" Value="{Binding WutheringWeeklyBossValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="Weekly Challenge" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x5148;&#x7EA6;&#x7535;&#x53F0;&#x7B49;&#x7EA7;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding WutheringBattlePassText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding WutheringBattlePassMax}" Value="{Binding WutheringBattlePassValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="Battle Pass" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="3"
+                            Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x9006;&#x5883;&#x6DF1;&#x5854;" />
+                                <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource AppTextBrush}" Text="{Binding WutheringTowerResetText}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="&#x5468;&#x671F;&#x91CD;&#x7F6E;" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="3"
+                            Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x51A5;&#x6B4C;&#x6D77;&#x589F;" />
+                                <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource AppTextBrush}" Text="{Binding WutheringSeaResetText}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="&#x5468;&#x671F;&#x91CD;&#x7F6E;" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Grid.Row="4"
+                            Grid.Column="0"
+                            Grid.ColumnSpan="2"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            Padding="18"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x7EC8;&#x7109;&#x51B3;&#x6218;" />
+                                <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource AppTextBrush}" Text="{Binding WutheringFinalBattleEndText}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="&#x7ED3;&#x675F;&#x65F6;&#x95F4;" />
                             </StackPanel>
                         </Border>
                     </Grid>
