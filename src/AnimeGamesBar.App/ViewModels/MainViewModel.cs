@@ -24,6 +24,7 @@ public sealed class MainViewModel : ObservableObject
     private ArknightsPlayerBinding? _selectedPlayerBinding;
     private ArknightsAccountStatus? _snapshot;
     private bool _autoRefreshEnabled;
+    private double _autoRefreshIntervalMinutes = 5;
 
     public MainViewModel(
         ICredentialStore credentialStore,
@@ -101,8 +102,31 @@ public sealed class MainViewModel : ObservableObject
     public bool AutoRefreshEnabled
     {
         get => _autoRefreshEnabled;
-        set => SetProperty(ref _autoRefreshEnabled, value);
+        set
+        {
+            if (SetProperty(ref _autoRefreshEnabled, value))
+            {
+                OnPropertyChanged(nameof(AutoRefreshSummary));
+            }
+        }
     }
+
+    public double AutoRefreshIntervalMinutes
+    {
+        get => _autoRefreshIntervalMinutes;
+        set
+        {
+            var interval = Math.Clamp(double.IsNaN(value) ? 5 : value, 1, 180);
+            if (SetProperty(ref _autoRefreshIntervalMinutes, interval))
+            {
+                OnPropertyChanged(nameof(AutoRefreshSummary));
+            }
+        }
+    }
+
+    public string AutoRefreshSummary => AutoRefreshEnabled
+        ? $"\u6BCF {AutoRefreshIntervalMinutes:0} \u5206\u949F\u5237\u65B0"
+        : "\u81EA\u52A8\u5237\u65B0\u5DF2\u5173\u95ED";
 
     public string DoctorName
     {

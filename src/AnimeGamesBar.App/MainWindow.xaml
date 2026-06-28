@@ -7,51 +7,139 @@
     Title="AnimeGames Bar"
     mc:Ignorable="d">
 
-    <Grid x:Name="Root" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid x:Name="Root" Background="#D9D9D9">
+        <Grid.Resources>
+            <SolidColorBrush x:Key="PanelSurfaceBrush" Color="#ECECEC" />
+            <SolidColorBrush x:Key="CardSurfaceBrush" Color="#F8F8F8" />
+            <SolidColorBrush x:Key="SubtleCardBrush" Color="#F1F1F1" />
+            <SolidColorBrush x:Key="AppAccentBrush" Color="#0067A8" />
+            <SolidColorBrush x:Key="AppAccentSoftBrush" Color="#D9EBF7" />
+            <SolidColorBrush x:Key="AppBorderBrush" Color="#C6C6C6" />
+            <SolidColorBrush x:Key="AppTextBrush" Color="#1F1F1F" />
+            <SolidColorBrush x:Key="AppMutedTextBrush" Color="#5E5E5E" />
+            <Style x:Key="MetricTitleStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            </Style>
+            <Style x:Key="MetricValueStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="30" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{StaticResource AppAccentBrush}" />
+            </Style>
+            <Style x:Key="MutedTextStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource AppMutedTextBrush}" />
+            </Style>
+        </Grid.Resources>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="52" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <CommandBar Grid.Row="0" DefaultLabelPosition="Right" IsOpen="False">
-            <AppBarButton Command="{Binding RefreshCommand}" Label="&#x5237;&#x65B0;">
-                <AppBarButton.Icon>
-                    <SymbolIcon Symbol="Refresh" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarButton Command="{Binding SaveCredentialCommand}" Label="&#x4FDD;&#x5B58;">
-                <AppBarButton.Icon>
-                    <SymbolIcon Symbol="Save" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarButton Command="{Binding StartLoginCommand}" Label="&#x767B;&#x5F55;">
-                <AppBarButton.Icon>
-                    <SymbolIcon Symbol="Contact" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarButton Command="{Binding ClearCredentialCommand}" Label="&#x6E05;&#x9664;">
-                <AppBarButton.Icon>
-                    <SymbolIcon Symbol="Delete" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-        </CommandBar>
-
-        <Grid Grid.Row="1" Padding="24,12,24,20" ColumnSpacing="20">
+        <Grid
+            Grid.Row="0"
+            Padding="20,0,20,0"
+            Background="{StaticResource PanelSurfaceBrush}"
+            ColumnSpacing="18">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                FontSize="18"
+                FontWeight="SemiBold"
+                Foreground="{StaticResource AppTextBrush}"
+                Text="AnimeGames Bar" />
+
+            <StackPanel
+                Grid.Column="1"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="22">
+                <TextBlock Foreground="{StaticResource AppMutedTextBrush}" Text="Arknights" />
+                <TextBlock Foreground="{StaticResource AppMutedTextBrush}" Text="Skland" />
+                <TextBlock Foreground="{StaticResource AppMutedTextBrush}" Text="{Binding AutoRefreshSummary}" />
+            </StackPanel>
+
+            <StackPanel
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="8">
+                <Button
+                    MinHeight="36"
+                    Padding="14,6"
+                    Background="{StaticResource AppAccentBrush}"
+                    Command="{Binding RefreshCommand}"
+                    Foreground="White">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon Symbol="Refresh" />
+                        <TextBlock Text="&#x5237;&#x65B0;" />
+                    </StackPanel>
+                </Button>
+                <Button
+                    MinHeight="36"
+                    Padding="14,6"
+                    Command="{Binding SaveCredentialCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon Symbol="Save" />
+                        <TextBlock Text="&#x4FDD;&#x5B58;" />
+                    </StackPanel>
+                </Button>
+                <Button
+                    MinHeight="36"
+                    Padding="14,6"
+                    Command="{Binding StartLoginCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon Symbol="Contact" />
+                        <TextBlock Text="&#x767B;&#x5F55;" />
+                    </StackPanel>
+                </Button>
+                <Button
+                    MinHeight="36"
+                    Padding="14,6"
+                    Command="{Binding ClearCredentialCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon Symbol="Delete" />
+                        <TextBlock Text="&#x6E05;&#x9664;" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+            <Border
+                Grid.ColumnSpan="3"
+                Height="1"
+                VerticalAlignment="Bottom"
+                Background="{StaticResource AppBorderBrush}" />
+        </Grid>
+
+        <Grid Grid.Row="1" Padding="16,14,16,14" ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
             <Border
                 Grid.Column="0"
+                Background="{StaticResource PanelSurfaceBrush}"
                 Padding="18"
-                BorderBrush="{ThemeResource PanelStrokeBrush}"
+                BorderBrush="{StaticResource AppBorderBrush}"
                 BorderThickness="1"
-                CornerRadius="8">
+                CornerRadius="6">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Spacing="14">
-                        <TextBlock FontSize="20" FontWeight="SemiBold" Text="&#x660E;&#x65E5;&#x65B9;&#x821F;" />
+                        <TextBlock
+                            FontSize="20"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource AppTextBrush}"
+                            Text="&#x660E;&#x65E5;&#x65B9;&#x821F;" />
+                        <TextBlock
+                            Style="{StaticResource MutedTextStyle}"
+                            Text="&#x8D26;&#x53F7;&#x4E0E;&#x5237;&#x65B0;&#x8BBE;&#x7F6E;" />
 
                         <ComboBox
                             Header="&#x8D26;&#x53F7;"
@@ -82,26 +170,71 @@
                             Header="Device ID"
                             Text="{Binding DeviceId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <ToggleSwitch
-                            Header="&#x81EA;&#x52A8;&#x5237;&#x65B0;"
-                            IsOn="{Binding AutoRefreshEnabled, Mode=TwoWay}" />
+                        <Border
+                            Background="{StaticResource CardSurfaceBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="12">
+                            <StackPanel Spacing="10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock
+                                            FontWeight="SemiBold"
+                                            Foreground="{StaticResource AppTextBrush}"
+                                            Text="&#x81EA;&#x52A8;&#x5237;&#x65B0;" />
+                                        <TextBlock
+                                            FontSize="12"
+                                            Style="{StaticResource MutedTextStyle}"
+                                            Text="{Binding AutoRefreshSummary}" />
+                                    </StackPanel>
+                                    <ToggleSwitch
+                                        Grid.Column="1"
+                                        IsOn="{Binding AutoRefreshEnabled, Mode=TwoWay}" />
+                                </Grid>
+                                <NumberBox
+                                    Header="&#x5237;&#x65B0;&#x9891;&#x7387;&#xFF08;&#x5206;&#x949F;&#xFF09;"
+                                    LargeChange="5"
+                                    Maximum="180"
+                                    Minimum="1"
+                                    SmallChange="1"
+                                    SpinButtonPlacementMode="Inline"
+                                    Value="{Binding AutoRefreshIntervalMinutes, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
 
-            <Grid Grid.Column="1" RowSpacing="18">
+            <Grid Grid.Column="1" RowSpacing="14">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="16">
-                    <TextBlock FontSize="28" FontWeight="SemiBold" Text="{Binding DoctorName}" />
+                <Border
+                    Grid.Row="0"
+                    Background="{StaticResource PanelSurfaceBrush}"
+                    BorderBrush="{StaticResource AppBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="16,12">
+                    <StackPanel Orientation="Horizontal" Spacing="16">
+                    <TextBlock
+                        FontSize="26"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource AppTextBrush}"
+                        Text="{Binding DoctorName}" />
                     <TextBlock
                         VerticalAlignment="Center"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Foreground="{StaticResource AppMutedTextBrush}"
                         Text="{Binding AccountBadgeText}" />
-                </StackPanel>
+                    </StackPanel>
+                </Border>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <Grid ColumnSpacing="16" RowSpacing="16">
@@ -119,30 +252,32 @@
                         <Border
                             Grid.Row="0"
                             Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
                             Padding="18"
-                            BorderBrush="{ThemeResource PanelStrokeBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
                             BorderThickness="1"
-                            CornerRadius="8">
+                            CornerRadius="6">
                             <StackPanel Spacing="10">
-                                <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x7406;&#x667A;" />
-                                <TextBlock FontSize="34" FontWeight="SemiBold" Text="{Binding SanityText}" />
-                                <ProgressBar Maximum="{Binding SanityMax}" Value="{Binding SanityValue}" />
-                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding SanityRecoveryText}" />
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x7406;&#x667A;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding SanityText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding SanityMax}" Value="{Binding SanityValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding SanityRecoveryText}" />
                             </StackPanel>
                         </Border>
 
                         <Border
                             Grid.Row="0"
                             Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
                             Padding="18"
-                            BorderBrush="{ThemeResource PanelStrokeBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
                             BorderThickness="1"
-                            CornerRadius="8">
+                            CornerRadius="6">
                             <StackPanel Spacing="10">
-                                <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x65E0;&#x4EBA;&#x673A;" />
-                                <TextBlock FontSize="34" FontWeight="SemiBold" Text="{Binding DroneText}" />
-                                <ProgressBar Maximum="{Binding DroneMax}" Value="{Binding DroneValue}" />
-                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding DroneRecoveryText}" />
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x65E0;&#x4EBA;&#x673A;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding DroneText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding DroneMax}" Value="{Binding DroneValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding DroneRecoveryText}" />
                             </StackPanel>
                         </Border>
 
@@ -150,10 +285,11 @@
                             Grid.Row="1"
                             Grid.Column="0"
                             Grid.ColumnSpan="2"
+                            Background="{StaticResource CardSurfaceBrush}"
                             Padding="18"
-                            BorderBrush="{ThemeResource PanelStrokeBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
                             BorderThickness="1"
-                            CornerRadius="8">
+                            CornerRadius="6">
                             <Grid ColumnSpacing="18">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="2*" />
@@ -162,20 +298,20 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0" Spacing="6">
-                                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x8BAD;&#x7EC3;&#x5BA4;" />
-                                    <TextBlock FontSize="26" FontWeight="SemiBold" Text="{Binding TrainingOperatorName}" />
+                                    <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x8BAD;&#x7EC3;&#x5BA4;" />
+                                    <TextBlock FontSize="26" FontWeight="SemiBold" Foreground="{StaticResource AppAccentBrush}" Text="{Binding TrainingOperatorName}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Spacing="6">
-                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x6280;&#x80FD;" />
-                                    <TextBlock FontSize="20" Text="{Binding TrainingSkillText}" />
+                                    <TextBlock Style="{StaticResource MutedTextStyle}" Text="&#x6280;&#x80FD;" />
+                                    <TextBlock FontSize="20" Foreground="{StaticResource AppTextBrush}" Text="{Binding TrainingSkillText}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Spacing="6">
-                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x5269;&#x4F59;" />
-                                    <TextBlock FontSize="20" Text="{Binding TrainingRemainingText}" />
+                                    <TextBlock Style="{StaticResource MutedTextStyle}" Text="&#x5269;&#x4F59;" />
+                                    <TextBlock FontSize="20" Foreground="{StaticResource AppTextBrush}" Text="{Binding TrainingRemainingText}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="3" Spacing="6">
-                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x5B8C;&#x6210;" />
-                                    <TextBlock FontSize="20" Text="{Binding TrainingCompleteAtText}" />
+                                    <TextBlock Style="{StaticResource MutedTextStyle}" Text="&#x5B8C;&#x6210;" />
+                                    <TextBlock FontSize="20" Foreground="{StaticResource AppTextBrush}" Text="{Binding TrainingCompleteAtText}" />
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -184,10 +320,11 @@
                             Grid.Row="2"
                             Grid.Column="0"
                             Grid.ColumnSpan="2"
+                            Background="{StaticResource CardSurfaceBrush}"
                             Padding="18"
-                            BorderBrush="{ThemeResource PanelStrokeBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
                             BorderThickness="1"
-                            CornerRadius="8">
+                            CornerRadius="6">
                             <Grid ColumnSpacing="18">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -195,21 +332,21 @@
                                     <ColumnDefinition Width="140" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0" Spacing="8">
-                                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x8BA2;&#x5355;&#x8FDB;&#x5EA6;" />
-                                    <TextBlock FontSize="26" FontWeight="SemiBold" Text="{Binding OrderText}" />
-                                    <ProgressBar Maximum="{Binding OrderMax}" Value="{Binding OrderValue}" />
-                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding OrderCompletionText}" />
+                                    <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x8BA2;&#x5355;&#x8FDB;&#x5EA6;" />
+                                    <TextBlock FontSize="26" FontWeight="SemiBold" Foreground="{StaticResource AppAccentBrush}" Text="{Binding OrderText}" />
+                                    <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding OrderMax}" Value="{Binding OrderValue}" />
+                                    <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding OrderCompletionText}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Spacing="8">
-                                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x5236;&#x9020;&#x8FDB;&#x5EA6;" />
-                                    <TextBlock FontSize="26" FontWeight="SemiBold" Text="{Binding ManufactureText}" />
-                                    <ProgressBar Maximum="{Binding ManufactureMax}" Value="{Binding ManufactureValue}" />
-                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding ManufactureCompletionText}" />
+                                    <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x5236;&#x9020;&#x8FDB;&#x5EA6;" />
+                                    <TextBlock FontSize="26" FontWeight="SemiBold" Foreground="{StaticResource AppAccentBrush}" Text="{Binding ManufactureText}" />
+                                    <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding ManufactureMax}" Value="{Binding ManufactureValue}" />
+                                    <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding ManufactureCompletionText}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Spacing="8">
-                                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x5E72;&#x5458;&#x75B2;&#x52B3;" />
-                                    <TextBlock FontSize="32" FontWeight="SemiBold" Text="{Binding TiredOperatorsText}" />
-                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x9700;&#x4F11;&#x606F;" />
+                                    <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x5E72;&#x5458;&#x75B2;&#x52B3;" />
+                                    <TextBlock FontSize="32" FontWeight="SemiBold" Foreground="{StaticResource AppAccentBrush}" Text="{Binding TiredOperatorsText}" />
+                                    <TextBlock Style="{StaticResource MutedTextStyle}" Text="&#x9700;&#x4F11;&#x606F;" />
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -217,44 +354,46 @@
                         <Border
                             Grid.Row="3"
                             Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
                             Padding="18"
-                            BorderBrush="{ThemeResource PanelStrokeBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
                             BorderThickness="1"
-                            CornerRadius="8">
+                            CornerRadius="6">
                             <StackPanel Spacing="10">
-                                <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x6BCF;&#x5468;&#x527F;&#x706D;" />
-                                <TextBlock FontSize="30" FontWeight="SemiBold" Text="{Binding AnnihilationText}" />
-                                <ProgressBar Maximum="{Binding AnnihilationMax}" Value="{Binding AnnihilationValue}" />
-                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding AnnihilationRefreshText}" />
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x6BCF;&#x5468;&#x527F;&#x706D;" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding AnnihilationText}" />
+                                <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding AnnihilationMax}" Value="{Binding AnnihilationValue}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding AnnihilationRefreshText}" />
                             </StackPanel>
                         </Border>
 
                         <Border
                             Grid.Row="3"
                             Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
                             Padding="18"
-                            BorderBrush="{ThemeResource PanelStrokeBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
                             BorderThickness="1"
-                            CornerRadius="8">
+                            CornerRadius="6">
                             <StackPanel Spacing="10">
-                                <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x4FDD;&#x5168;&#x6D3E;&#x9A7B;" />
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x4FDD;&#x5168;&#x6D3E;&#x9A7B;" />
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" Spacing="8">
-                                        <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x6570;&#x636E;&#x589E;&#x8865;&#x4EEA;" />
-                                        <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding SecurityServiceText}" />
-                                        <ProgressBar Maximum="{Binding SecurityServiceMax}" Value="{Binding SecurityServiceValue}" />
+                                        <TextBlock Style="{StaticResource MutedTextStyle}" Text="&#x6570;&#x636E;&#x589E;&#x8865;&#x4EEA;" />
+                                        <TextBlock FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource AppAccentBrush}" Text="{Binding SecurityServiceText}" />
+                                        <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding SecurityServiceMax}" Value="{Binding SecurityServiceValue}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Spacing="8">
-                                        <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x6570;&#x636E;&#x589E;&#x8865;&#x6761;" />
-                                        <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding SecurityServiceStripText}" />
-                                        <ProgressBar Maximum="{Binding SecurityServiceStripMax}" Value="{Binding SecurityServiceStripValue}" />
+                                        <TextBlock Style="{StaticResource MutedTextStyle}" Text="&#x6570;&#x636E;&#x589E;&#x8865;&#x6761;" />
+                                        <TextBlock FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource AppAccentBrush}" Text="{Binding SecurityServiceStripText}" />
+                                        <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding SecurityServiceStripMax}" Value="{Binding SecurityServiceStripValue}" />
                                     </StackPanel>
                                 </Grid>
-                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding SecurityServiceRefreshText}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding SecurityServiceRefreshText}" />
                             </StackPanel>
                         </Border>
                     </Grid>
