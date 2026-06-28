@@ -87,7 +87,10 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
 
         var data = KuroClient.Get(document.RootElement, "data");
         var weeklyVoyage = ReadWeeklyVoyage(data);
-        weeklyVoyage = await ReadWeeklyVoyageFromBaseDataAsync(credential, player, weeklyVoyage, cancellationToken);
+        if (weeklyVoyage.Maximum <= 0)
+        {
+            weeklyVoyage = await ReadWeeklyVoyageFromBaseDataAsync(credential, player, weeklyVoyage, cancellationToken);
+        }
 
         var status = new WutheringWavesAccountStatus(
             PlayerName: KuroClient.ReadString(data, "roleName") ?? player.NickName,
