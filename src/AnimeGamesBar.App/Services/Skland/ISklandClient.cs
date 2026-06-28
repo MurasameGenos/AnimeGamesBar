@@ -16,4 +16,11 @@ public interface ISklandClient
         string pathAndQuery,
         CancellationToken cancellationToken,
         IReadOnlyDictionary<string, string>? headers = null);
+
+    Task<JsonDocument> PostJsonAsync(
+        SklandCredential credential,
+        string pathAndQuery,
+        object? body,
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string>? headers = null);
 }

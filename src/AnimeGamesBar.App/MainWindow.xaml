@@ -10,8 +10,9 @@
     <Grid
         x:Name="Root"
         Background="#202124"
-        RequestedTheme="Dark">
+        RequestedTheme="{Binding RootTheme}">
         <Grid.Resources>
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="#202124" />
             <SolidColorBrush x:Key="PanelSurfaceBrush" Color="#28292B" />
             <SolidColorBrush x:Key="CardSurfaceBrush" Color="#303133" />
             <SolidColorBrush x:Key="SubtleCardBrush" Color="#37383A" />
@@ -141,6 +142,17 @@
                     MinHeight="36"
                     Padding="14,6"
                     Background="{StaticResource AppButtonBrush}"
+                    Command="{Binding SignInCommand}"
+                    Foreground="{StaticResource AppTextBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon Symbol="Calendar" />
+                        <TextBlock Text="&#x7B7E;&#x5230;" />
+                    </StackPanel>
+                </Button>
+                <Button
+                    MinHeight="36"
+                    Padding="14,6"
+                    Background="{StaticResource AppButtonBrush}"
                     Command="{Binding SaveCredentialCommand}"
                     Foreground="{StaticResource AppTextBrush}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -170,6 +182,17 @@
                         <TextBlock Text="&#x6E05;&#x9664;" />
                     </StackPanel>
                 </Button>
+                <Button
+                    MinHeight="36"
+                    Padding="14,6"
+                    Background="{StaticResource AppButtonBrush}"
+                    Command="{Binding OpenSettingsCommand}"
+                    Foreground="{StaticResource AppTextBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon Symbol="Setting" />
+                        <TextBlock Text="&#x8BBE;&#x7F6E;" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
             <Border
                 Grid.ColumnSpan="3"
@@ -178,9 +201,9 @@
                 Background="{StaticResource AppBorderBrush}" />
         </Grid>
 
-        <Grid Grid.Row="1" Padding="16,14,16,14" ColumnSpacing="16">
+        <Grid Grid.Row="1" Padding="16,14,16,14" ColumnSpacing="16" Visibility="{Binding DashboardVisibility}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="340" />
+                <ColumnDefinition Width="360" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -191,7 +214,7 @@
                 BorderBrush="{StaticResource AppBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="6">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer Padding="0,0,12,0" VerticalScrollBarVisibility="Auto">
                     <StackPanel Spacing="14">
                         <TextBlock
                             FontSize="20"
@@ -263,7 +286,7 @@
                                     Maximum="180"
                                     Minimum="1"
                                     SmallChange="1"
-                                    SpinButtonPlacementMode="Inline"
+                                    SpinButtonPlacementMode="Compact"
                                     Value="{Binding AutoRefreshIntervalMinutes, Mode=TwoWay}" />
                             </StackPanel>
                         </Border>
@@ -543,6 +566,118 @@
                     </Grid>
                 </ScrollViewer>
             </Grid>
+        </Grid>
+
+        <Grid
+            Grid.Row="1"
+            Padding="16,14,16,14"
+            Visibility="{Binding SettingsVisibility}">
+            <Border
+                Background="{StaticResource PanelSurfaceBrush}"
+                BorderBrush="{StaticResource AppBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="22">
+                <Grid RowSpacing="18">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="4">
+                            <TextBlock
+                                FontSize="24"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource AppTextBrush}"
+                                Text="&#x8BBE;&#x7F6E;" />
+                            <TextBlock
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="AnimeGames Bar" />
+                        </StackPanel>
+                        <Button
+                            Grid.Column="1"
+                            MinHeight="36"
+                            Padding="14,6"
+                            Background="{StaticResource AppButtonBrush}"
+                            Command="{Binding CloseSettingsCommand}"
+                            Foreground="{StaticResource AppTextBrush}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <SymbolIcon Symbol="Back" />
+                                <TextBlock Text="&#x8FD4;&#x56DE;" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <Grid Grid.Row="1" ColumnSpacing="16" RowSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Border
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="16">
+                            <ToggleSwitch
+                                Header="&#x6DF1;&#x8272;&#x6A21;&#x5F0F;"
+                                IsOn="{Binding UseDarkTheme, Mode=TwoWay}" />
+                        </Border>
+
+                        <Border
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="16">
+                            <ToggleSwitch
+                                Header="&#x81EA;&#x52A8;&#x7B7E;&#x5230;"
+                                IsOn="{Binding AutoSignEnabled, Mode=TwoWay}" />
+                        </Border>
+
+                        <Border
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="16">
+                            <ToggleSwitch
+                                Header="Windows &#x901A;&#x77E5;"
+                                IsOn="{Binding NotificationsEnabled, Mode=TwoWay}" />
+                        </Border>
+
+                        <Border
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="16">
+                            <ToggleSwitch
+                                Header="&#x5F00;&#x673A;&#x81EA;&#x542F;"
+                                IsOn="{Binding StartWithWindows, Mode=TwoWay}" />
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
         </Grid>
 
         <InfoBar

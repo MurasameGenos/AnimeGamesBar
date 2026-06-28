@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
 using AnimeGamesBar.App.Models;
+using AnimeGamesBar.App.Services.Notifications;
 using AnimeGamesBar.App.Services.Arknights;
+using AnimeGamesBar.App.Services.Settings;
 using AnimeGamesBar.App.Services.Skland;
+using AnimeGamesBar.App.Services.Startup;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -15,6 +18,10 @@ public sealed class MainViewModel : ObservableObject
     private readonly ICredentialStore _credentialStore;
     private readonly IArknightsMonitor _monitor;
     private readonly ISklandLoginService _loginService;
+    private readonly ISklandSignInService _signInService;
+    private readonly ISettingsStore _settingsStore;
+    private readonly IAppNotificationService _notificationService;
+    private readonly IStartupService _startupService;
     private readonly List<ArknightsPlayerBinding> _arknightsBindings = new();
     private readonly List<ArknightsPlayerBinding> _endfieldBindings = new();
 
@@ -35,28 +42,56 @@ public sealed class MainViewModel : ObservableObject
     private GameDashboardKind _selectedGame = GameDashboardKind.Arknights;
     private bool _autoRefreshEnabled;
     private double _autoRefreshIntervalMinutes = 5;
+    private bool _isSettingsPageOpen;
+    private bool _useDarkTheme = true;
+    private bool _autoSignEnabled = true;
+    private bool _notificationsEnabled = true;
+    private bool _startWithWindows;
+    private bool _settingsLoaded;
+    private bool _isApplyingSettings;
 
     public MainViewModel(
         ICredentialStore credentialStore,
         IArknightsMonitor monitor,
-        ISklandLoginService loginService)
+        ISklandLoginService loginService,
+        ISklandSignInService signInService,
+        ISettingsStore settingsStore,
+        IAppNotificationService notificationService,
+        IStartupService startupService)
     {
         _credentialStore = credentialStore;
         _monitor = monitor;
         _loginService = loginService;
+        _signInService = signInService;
+        _settingsStore = settingsStore;
+        _notificationService = notificationService;
+        _startupService = startupService;
 
         RefreshCommand = new AsyncCommand(RefreshAsync);
         RefreshAllCommand = new AsyncCommand(RefreshAllAsync);
+        SignInCommand = new AsyncCommand(SignInAllAsync);
         SaveCredentialCommand = new AsyncCommand(SaveCredentialAsync);
         ClearCredentialCommand = new AsyncCommand(ClearCredentialAsync);
         StartLoginCommand = new AsyncCommand(StartLoginAsync);
+        OpenSettingsCommand = new AsyncCommand(_ =>
+        {
+            IsSettingsPageOpen = true;
+            return Task.CompletedTask;
+        });
+        CloseSettingsCommand = new AsyncCommand(_ =>
+        {
+            IsSettingsPageOpen = false;
+            return Task.CompletedTask;
+        });
         SelectArknightsCommand = new AsyncCommand(_ =>
         {
+            IsSettingsPageOpen = false;
             SelectGame(GameDashboardKind.Arknights);
             return Task.CompletedTask;
         });
         SelectEndfieldCommand = new AsyncCommand(_ =>
         {
+            IsSettingsPageOpen = false;
             SelectGame(GameDashboardKind.Endfield);
             return Task.CompletedTask;
         });
@@ -74,6 +109,8 @@ public sealed class MainViewModel : ObservableObject
 
     public AsyncCommand RefreshAllCommand { get; }
 
+    public AsyncCommand SignInCommand { get; }
+
     public AsyncCommand SaveCredentialCommand { get; }
 
     public AsyncCommand ClearCredentialCommand { get; }
@@ -83,6 +120,10 @@ public sealed class MainViewModel : ObservableObject
     public AsyncCommand SelectArknightsCommand { get; }
 
     public AsyncCommand SelectEndfieldCommand { get; }
+
+    public AsyncCommand OpenSettingsCommand { get; }
+
+    public AsyncCommand CloseSettingsCommand { get; }
 
     public string Cred
     {
@@ -158,6 +199,83 @@ public sealed class MainViewModel : ObservableObject
     public string AutoRefreshSummary => AutoRefreshEnabled
         ? $"\u6BCF {AutoRefreshIntervalMinutes:0} \u5206\u949F\u5237\u65B0"
         : "\u81EA\u52A8\u5237\u65B0\u5DF2\u5173\u95ED";
+
+    public bool IsSettingsPageOpen
+    {
+        get => _isSettingsPageOpen;
+        set
+        {
+            if (SetProperty(ref _isSettingsPageOpen, value))
+            {
+                OnPropertyChanged(nameof(DashboardVisibility));
+                OnPropertyChanged(nameof(SettingsVisibility));
+            }
+        }
+    }
+
+    public Visibility DashboardVisibility => IsSettingsPageOpen ? Visibility.Collapsed : Visibility.Visible;
+
+    public Visibility SettingsVisibility => IsSettingsPageOpen ? Visibility.Visible : Visibility.Collapsed;
+
+    public bool UseDarkTheme
+    {
+        get => _useDarkTheme;
+        set
+        {
+            if (SetProperty(ref _useDarkTheme, value))
+            {
+                OnPropertyChanged(nameof(RootTheme));
+                _ = SaveSettingsAsync();
+            }
+        }
+    }
+
+    public ElementTheme RootTheme => UseDarkTheme ? ElementTheme.Dark : ElementTheme.Light;
+
+    public bool AutoSignEnabled
+    {
+        get => _autoSignEnabled;
+        set
+        {
+            if (SetProperty(ref _autoSignEnabled, value))
+            {
+                _ = SaveSettingsAsync();
+            }
+        }
+    }
+
+    public bool NotificationsEnabled
+    {
+        get => _notificationsEnabled;
+        set
+        {
+            if (SetProperty(ref _notificationsEnabled, value))
+            {
+                _ = SaveSettingsAsync();
+            }
+        }
+    }
+
+    public bool StartWithWindows
+    {
+        get => _startWithWindows;
+        set
+        {
+            if (SetProperty(ref _startWithWindows, value))
+            {
+                try
+                {
+                    _startupService.SetEnabled(value);
+                }
+                catch (Exception ex)
+                {
+                    SetStatus($"\u5F00\u673A\u81EA\u542F\u8BBE\u7F6E\u5931\u8D25\uFF1A{ex.Message}", InfoBarSeverity.Warning);
+                }
+
+                _ = SaveSettingsAsync();
+            }
+        }
+    }
 
     public bool IsArknightsSelected
     {
@@ -338,6 +456,8 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task InitializeAsync()
     {
+        await LoadSettingsAsync(CancellationToken.None);
+
         var legacyCredential = await _credentialStore.LoadAsync(CancellationToken.None);
         var arknightsCredential = await _credentialStore.LoadAsync(CredentialScopeFor(GameDashboardKind.Arknights), CancellationToken.None);
         var endfieldCredential = await _credentialStore.LoadAsync(CredentialScopeFor(GameDashboardKind.Endfield), CancellationToken.None);
@@ -354,7 +474,45 @@ public sealed class MainViewModel : ObservableObject
         ApplyCredential(GetCredentialFor(_selectedGame));
         SetStatus("\u5DF2\u52A0\u8F7D\u672C\u5730\u51ED\u636E\u3002", InfoBarSeverity.Success);
 
+        await TryStartupSignInAsync(CancellationToken.None);
         await RefreshAllAsync(CancellationToken.None);
+    }
+
+    private async Task LoadSettingsAsync(CancellationToken cancellationToken)
+    {
+        _isApplyingSettings = true;
+        try
+        {
+            var settings = await _settingsStore.LoadAsync(cancellationToken);
+            UseDarkTheme = settings.UseDarkTheme;
+            AutoSignEnabled = settings.AutoSignEnabled;
+            NotificationsEnabled = settings.NotificationsEnabled;
+            StartWithWindows = settings.StartWithWindows || _startupService.IsEnabled();
+        }
+        finally
+        {
+            _isApplyingSettings = false;
+            _settingsLoaded = true;
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        if (!_settingsLoaded || _isApplyingSettings)
+        {
+            return;
+        }
+
+        try
+        {
+            await _settingsStore.SaveAsync(
+                new AppSettings(UseDarkTheme, AutoSignEnabled, NotificationsEnabled, StartWithWindows),
+                CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"\u8BBE\u7F6E\u4FDD\u5B58\u5931\u8D25\uFF1A{ex.Message}", InfoBarSeverity.Warning);
+        }
     }
 
     private async Task RefreshAsync(CancellationToken cancellationToken)
@@ -413,6 +571,91 @@ public sealed class MainViewModel : ObservableObject
         {
             SetStatus(ex.Message, InfoBarSeverity.Error);
         }
+    }
+
+    private async Task SignInAllAsync(CancellationToken cancellationToken)
+    {
+        await SignInAllAsync(cancellationToken, showNotification: NotificationsEnabled);
+    }
+
+    private async Task TryStartupSignInAsync(CancellationToken cancellationToken)
+    {
+        if (!AutoSignEnabled)
+        {
+            return;
+        }
+
+        await SignInAllAsync(cancellationToken, showNotification: NotificationsEnabled);
+    }
+
+    private async Task SignInAllAsync(CancellationToken cancellationToken, bool showNotification)
+    {
+        try
+        {
+            CommitCurrentCredentialFields();
+            if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret)
+            {
+                SetStatus("\u81EA\u52A8\u7B7E\u5230\u8DF3\u8FC7\uFF1A\u7F3A\u5C11\u8D26\u53F7\u51ED\u636E\u3002", InfoBarSeverity.Warning);
+                return;
+            }
+
+            var results = new List<SklandSignInResult>();
+            if (_arknightsCredential.HasAnySecret)
+            {
+                results.AddRange(await SignInGameAsync(GameDashboardKind.Arknights, _arknightsCredential, cancellationToken));
+            }
+
+            if (_endfieldCredential.HasAnySecret)
+            {
+                results.AddRange(await SignInGameAsync(GameDashboardKind.Endfield, _endfieldCredential, cancellationToken));
+            }
+
+            if (results.Count == 0)
+            {
+                SetStatus("\u6CA1\u6709\u627E\u5230\u53EF\u7B7E\u5230\u7684\u7ED1\u5B9A\u89D2\u8272\u3002", InfoBarSeverity.Warning);
+                return;
+            }
+
+            var failed = results.Count(result => result.IsFailure);
+            var alreadySigned = results.Count(result => result.State == SklandSignInState.AlreadySigned);
+            var succeeded = results.Count(result => result.State == SklandSignInState.Success);
+            var title = failed > 0
+                ? "\u68EE\u7A7A\u5C9B\u7B7E\u5230\u5B8C\u6210\uFF0C\u90E8\u5206\u5931\u8D25"
+                : succeeded == 0 && alreadySigned > 0
+                    ? "\u68EE\u7A7A\u5C9B\u4ECA\u65E5\u5DF2\u7B7E\u5230"
+                    : "\u68EE\u7A7A\u5C9B\u7B7E\u5230\u5B8C\u6210";
+            var message = BuildSignInSummary(results);
+
+            SetStatus(message, failed > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
+            if (showNotification)
+            {
+                await _notificationService.ShowAsync(title, message, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            var message = $"\u7B7E\u5230\u5931\u8D25\uFF1A{ex.Message}";
+            SetStatus(message, InfoBarSeverity.Error);
+            if (showNotification)
+            {
+                await _notificationService.ShowAsync("\u68EE\u7A7A\u5C9B\u7B7E\u5230\u5931\u8D25", message, cancellationToken);
+            }
+        }
+    }
+
+    private async Task<IReadOnlyList<SklandSignInResult>> SignInGameAsync(
+        GameDashboardKind game,
+        SklandCredential credential,
+        CancellationToken cancellationToken)
+    {
+        await EnsureBindingsAsync(game, credential, cancellationToken);
+        var bindings = BindingCache(game).ToArray();
+        if (bindings.Length == 0)
+        {
+            return Array.Empty<SklandSignInResult>();
+        }
+
+        return await _signInService.SignInAsync(credential, game, bindings, cancellationToken);
     }
 
     private async Task<bool> RefreshGameAsync(
@@ -741,6 +984,22 @@ public sealed class MainViewModel : ObservableObject
     {
         StatusSeverity = severity;
         StatusMessage = message;
+    }
+
+    private static string BuildSignInSummary(IReadOnlyList<SklandSignInResult> results)
+    {
+        return string.Join(
+            "\n",
+            results.Select(result =>
+            {
+                var state = result.State switch
+                {
+                    SklandSignInState.Success => "\u6210\u529F",
+                    SklandSignInState.AlreadySigned => "\u5DF2\u7B7E\u5230",
+                    _ => "\u5931\u8D25"
+                };
+                return $"[{result.GameName}] {result.RoleName} {state}\uFF1A{result.Message}";
+            }));
     }
 
     private void NotifySnapshotChanged()

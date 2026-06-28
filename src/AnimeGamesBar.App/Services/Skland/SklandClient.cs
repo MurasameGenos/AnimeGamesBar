@@ -41,6 +41,16 @@ public sealed class SklandClient : ISklandClient
         return await SendGetJsonAsync(credential, baseUri, pathAndQuery, cancellationToken, headers, allowRefresh: true);
     }
 
+    public async Task<JsonDocument> PostJsonAsync(
+        SklandCredential credential,
+        string pathAndQuery,
+        object? body,
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string>? headers = null)
+    {
+        return await SendPostJsonAsync(credential, BaseUri, pathAndQuery, body, cancellationToken, headers, allowRefresh: true);
+    }
+
     private async Task<JsonDocument> SendGetJsonAsync(
         SklandCredential credential,
         Uri baseUri,
@@ -80,6 +90,50 @@ public sealed class SklandClient : ISklandClient
         }
 
         return JsonDocument.Parse(body);
+    }
+
+    private async Task<JsonDocument> SendPostJsonAsync(
+        SklandCredential credential,
+        Uri baseUri,
+        string pathAndQuery,
+        object? body,
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string>? headers,
+        bool allowRefresh)
+    {
+        var requestUri = new Uri(baseUri, pathAndQuery);
+        var bodyJson = body is null ? string.Empty : JsonSerializer.Serialize(body);
+        using var request = new HttpRequestMessage(HttpMethod.Post, requestUri);
+
+        ApplyHeaders(request, credential);
+        ApplyExtraHeaders(request, headers);
+        request.Content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+        _signer.Sign(request, credential, _clock.Now, bodyJson);
+
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (allowRefresh && ShouldRefreshToken(responseBody))
+        {
+            var refreshedToken = await RefreshTokenAsync(credential, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(refreshedToken))
+            {
+                var refreshedCredential = credential with { Token = refreshedToken };
+                return await SendPostJsonAsync(refreshedCredential, baseUri, pathAndQuery, body, cancellationToken, headers, allowRefresh: false);
+            }
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw CreateHttpException(response, responseBody);
+        }
+
+        if (TryDecodeTransformedJson(responseBody, out var decoded))
+        {
+            return decoded;
+        }
+
+        return JsonDocument.Parse(responseBody);
     }
 
     private async Task<string?> RefreshTokenAsync(SklandCredential credential, CancellationToken cancellationToken)

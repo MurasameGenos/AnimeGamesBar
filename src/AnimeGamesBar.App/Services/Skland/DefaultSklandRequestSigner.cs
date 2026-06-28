@@ -2,7 +2,7 @@ namespace AnimeGamesBar.App.Services.Skland;
 
 public sealed class DefaultSklandRequestSigner : ISklandRequestSigner
 {
-    public void Sign(HttpRequestMessage request, SklandCredential credential, DateTimeOffset timestamp)
+    public void Sign(HttpRequestMessage request, SklandCredential credential, DateTimeOffset timestamp, string body = "")
     {
         var signTimestamp = timestamp.ToUnixTimeSeconds().ToString();
         var platform = "1";
@@ -27,11 +27,11 @@ public sealed class DefaultSklandRequestSigner : ISklandRequestSigner
             return;
         }
 
-        var query = request.Method == HttpMethod.Get
+        var bodyOrQuery = request.Method == HttpMethod.Get
             ? request.RequestUri.Query.TrimStart('?')
-            : string.Empty;
+            : body;
         var headerJson = $"{{\"platform\":\"{platform}\",\"timestamp\":\"{signTimestamp}\",\"dId\":\"{deviceId}\",\"vName\":\"{versionName}\"}}";
-        var textToSign = path + query + signTimestamp + headerJson;
+        var textToSign = path + bodyOrQuery + signTimestamp + headerJson;
         var hmacHex = HmacSha256Hex(credential.Token ?? string.Empty, textToSign);
         var sign = Md5Hex(hmacHex);
 
