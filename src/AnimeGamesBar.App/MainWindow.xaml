@@ -25,9 +25,9 @@
                     <SymbolIcon Symbol="Save" />
                 </AppBarButton.Icon>
             </AppBarButton>
-            <AppBarButton Command="{Binding StartQrLoginCommand}" Label="&#x626B;&#x7801;">
+            <AppBarButton Command="{Binding StartLoginCommand}" Label="&#x767B;&#x5F55;">
                 <AppBarButton.Icon>
-                    <SymbolIcon Symbol="Camera" />
+                    <SymbolIcon Symbol="Contact" />
                 </AppBarButton.Icon>
             </AppBarButton>
             <AppBarButton Command="{Binding ClearCredentialCommand}" Label="&#x6E05;&#x9664;">
@@ -75,6 +75,10 @@
                             PasswordChanged="CookieBox_OnPasswordChanged" />
 
                         <TextBox
+                            Header="User ID"
+                            Text="{Binding UserId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <TextBox
                             Header="Device ID"
                             Text="{Binding DeviceId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
@@ -106,6 +110,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -154,6 +159,7 @@
                                     <ColumnDefinition Width="2*" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0" Spacing="6">
                                     <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x8BAD;&#x7EC3;&#x5BA4;" />
@@ -167,11 +173,49 @@
                                     <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x5269;&#x4F59;" />
                                     <TextBlock FontSize="20" Text="{Binding TrainingRemainingText}" />
                                 </StackPanel>
+                                <StackPanel Grid.Column="3" Spacing="6">
+                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x5B8C;&#x6210;" />
+                                    <TextBlock FontSize="20" Text="{Binding TrainingCompleteAtText}" />
+                                </StackPanel>
                             </Grid>
                         </Border>
 
                         <Border
                             Grid.Row="2"
+                            Grid.Column="0"
+                            Grid.ColumnSpan="2"
+                            Padding="18"
+                            BorderBrush="{ThemeResource PanelStrokeBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                            <Grid ColumnSpacing="18">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="140" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Spacing="8">
+                                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x8BA2;&#x5355;&#x8FDB;&#x5EA6;" />
+                                    <TextBlock FontSize="26" FontWeight="SemiBold" Text="{Binding OrderText}" />
+                                    <ProgressBar Maximum="{Binding OrderMax}" Value="{Binding OrderValue}" />
+                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding OrderCompletionText}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="8">
+                                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x5236;&#x9020;&#x8FDB;&#x5EA6;" />
+                                    <TextBlock FontSize="26" FontWeight="SemiBold" Text="{Binding ManufactureText}" />
+                                    <ProgressBar Maximum="{Binding ManufactureMax}" Value="{Binding ManufactureValue}" />
+                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding ManufactureCompletionText}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="8">
+                                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x5E72;&#x5458;&#x75B2;&#x52B3;" />
+                                    <TextBlock FontSize="32" FontWeight="SemiBold" Text="{Binding TiredOperatorsText}" />
+                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x9700;&#x4F11;&#x606F;" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border
+                            Grid.Row="3"
                             Grid.Column="0"
                             Padding="18"
                             BorderBrush="{ThemeResource PanelStrokeBrush}"
@@ -181,11 +225,12 @@
                                 <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x6BCF;&#x5468;&#x527F;&#x706D;" />
                                 <TextBlock FontSize="30" FontWeight="SemiBold" Text="{Binding AnnihilationText}" />
                                 <ProgressBar Maximum="{Binding AnnihilationMax}" Value="{Binding AnnihilationValue}" />
+                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding AnnihilationRefreshText}" />
                             </StackPanel>
                         </Border>
 
                         <Border
-                            Grid.Row="2"
+                            Grid.Row="3"
                             Grid.Column="1"
                             Padding="18"
                             BorderBrush="{ThemeResource PanelStrokeBrush}"
@@ -193,8 +238,23 @@
                             CornerRadius="8">
                             <StackPanel Spacing="10">
                                 <TextBlock FontSize="16" FontWeight="SemiBold" Text="&#x4FDD;&#x5168;&#x6D3E;&#x9A7B;" />
-                                <TextBlock FontSize="30" FontWeight="SemiBold" Text="{Binding SecurityServiceText}" />
-                                <ProgressBar Maximum="{Binding SecurityServiceMax}" Value="{Binding SecurityServiceValue}" />
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Spacing="8">
+                                        <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x6570;&#x636E;&#x589E;&#x8865;&#x4EEA;" />
+                                        <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding SecurityServiceText}" />
+                                        <ProgressBar Maximum="{Binding SecurityServiceMax}" Value="{Binding SecurityServiceValue}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Spacing="8">
+                                        <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x6570;&#x636E;&#x589E;&#x8865;&#x6761;" />
+                                        <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding SecurityServiceStripText}" />
+                                        <ProgressBar Maximum="{Binding SecurityServiceStripMax}" Value="{Binding SecurityServiceStripValue}" />
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding SecurityServiceRefreshText}" />
                             </StackPanel>
                         </Border>
                     </Grid>

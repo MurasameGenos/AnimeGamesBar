@@ -4,6 +4,7 @@ public sealed record SklandCredential(
     string Cred,
     string Token,
     string Cookie,
+    string UserId,
     string DeviceId,
     DateTimeOffset UpdatedAt)
 {
@@ -13,6 +14,7 @@ public sealed record SklandCredential(
         !string.IsNullOrWhiteSpace(Cookie);
 
     public static SklandCredential Empty { get; } = new(
+        string.Empty,
         string.Empty,
         string.Empty,
         string.Empty,

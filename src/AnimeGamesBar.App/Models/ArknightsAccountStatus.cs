@@ -6,6 +6,8 @@ public sealed record ArknightsAccountStatus(
     ResourceMeter Sanity,
     ResourceMeter Drones,
     TrainingRoomStatus TrainingRoom,
+    BuildingStatus Building,
     WeeklyProgress Annihilation,
     WeeklyProgress SecurityService,
+    WeeklyProgress SecurityServiceStrips,
     DateTimeOffset UpdatedAt);

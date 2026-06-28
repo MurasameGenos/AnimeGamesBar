@@ -37,6 +37,11 @@ Desktop.ini
 
 # Logs
 *.log
+*.dump
+*.dmp
+
+# Local reference checkouts
+.refs/
 
 # Local secrets
 *.pfx

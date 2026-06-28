@@ -5,7 +5,7 @@ namespace AnimeGamesBar.App.Services.Arknights;
 
 public interface IArknightsMonitor
 {
-    Task<IReadOnlyList<ArknightsPlayerBinding>> GetBindingsAsync(
+    Task<ArknightsBindingResult> GetBindingsAsync(
         SklandCredential credential,
         CancellationToken cancellationToken);
 

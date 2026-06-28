@@ -7,5 +7,13 @@ public interface ISklandClient
     Task<JsonDocument> GetJsonAsync(
         SklandCredential credential,
         string pathAndQuery,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string>? headers = null);
+
+    Task<JsonDocument> GetJsonAsync(
+        SklandCredential credential,
+        Uri baseUri,
+        string pathAndQuery,
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string>? headers = null);
 }

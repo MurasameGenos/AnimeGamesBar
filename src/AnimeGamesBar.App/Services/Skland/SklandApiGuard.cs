@@ -19,7 +19,7 @@ public static class SklandApiGuard
 
         var message = ReadString(root, "message", "msg", "error") ??
             $"\u68EE\u7A7A\u5C9B\u63A5\u53E3\u8FD4\u56DE\u9519\u8BEF\u7801 {code.Value}\u3002";
-        throw new SklandApiException(message);
+        throw new SklandApiException($"{message} (code {code.Value})", null, code);
     }
 
     private static int? ReadCode(JsonElement root)

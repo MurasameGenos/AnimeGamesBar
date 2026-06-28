@@ -7,9 +7,24 @@ public static class JsonElementNavigator
 {
     public static JsonElement Get(JsonElement root, string propertyName)
     {
-        return root.ValueKind == JsonValueKind.Object && root.TryGetProperty(propertyName, out var value)
+        return TryGetPropertyCaseInsensitive(root, propertyName, out var value)
             ? value
             : default;
+    }
+
+    public static JsonElement Get(JsonElement root, params string[] propertyPath)
+    {
+        var current = root;
+        foreach (var propertyName in propertyPath)
+        {
+            current = Get(current, propertyName);
+            if (current.ValueKind == JsonValueKind.Undefined)
+            {
+                return default;
+            }
+        }
+
+        return current;
     }
 
     public static IEnumerable<JsonElement> EnumerateObjects(JsonElement element)
@@ -136,6 +151,30 @@ public static class JsonElementNavigator
 
             if (value.ValueKind == JsonValueKind.String &&
                 long.TryParse(value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out number))
+            {
+                return number;
+            }
+        }
+
+        return null;
+    }
+
+    public static double? ReadDouble(JsonElement element, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            if (!TryGetPropertyCaseInsensitive(element, propertyName, out var value))
+            {
+                continue;
+            }
+
+            if (value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var number))
+            {
+                return number;
+            }
+
+            if (value.ValueKind == JsonValueKind.String &&
+                double.TryParse(value.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out number))
             {
                 return number;
             }
