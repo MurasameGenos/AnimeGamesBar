@@ -14,6 +14,7 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _arknightsAutoRefreshTimer = new();
     private readonly DispatcherTimer _endfieldAutoRefreshTimer = new();
     private readonly DispatcherTimer _wutheringWavesAutoRefreshTimer = new();
+    private readonly DispatcherTimer _autoSignTimer = new();
 
     public MainWindow(MainViewModel viewModel)
     {
@@ -25,11 +26,13 @@ public sealed partial class MainWindow : Window
         _arknightsAutoRefreshTimer.Tick += ArknightsAutoRefreshTimer_OnTick;
         _endfieldAutoRefreshTimer.Tick += EndfieldAutoRefreshTimer_OnTick;
         _wutheringWavesAutoRefreshTimer.Tick += WutheringWavesAutoRefreshTimer_OnTick;
+        _autoSignTimer.Tick += AutoSignTimer_OnTick;
         Root.DataContext = ViewModel;
         Closed += MainWindow_OnClosed;
         SetDefaultSize();
         ApplyThemePalette();
         UpdateAutoRefreshTimer();
+        UpdateAutoSignTimer();
     }
 
     public MainViewModel ViewModel { get; }
@@ -68,6 +71,13 @@ public sealed partial class MainWindow : Window
             UpdateAutoRefreshTimer();
         }
 
+        if (e.PropertyName is nameof(MainViewModel.AutoSignEnabled)
+            or nameof(MainViewModel.AutoSignHour)
+            or nameof(MainViewModel.AutoSignMinute))
+        {
+            UpdateAutoSignTimer();
+        }
+
         if (e.PropertyName == nameof(MainViewModel.RootTheme))
         {
             ApplyThemePalette();
@@ -98,6 +108,15 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void AutoSignTimer_OnTick(object? sender, object e)
+    {
+        if (ViewModel.TryReserveScheduledAutoSign(DateTime.Now) &&
+            ViewModel.ScheduledSignInCommand.CanExecute(null))
+        {
+            ViewModel.ScheduledSignInCommand.Execute(null);
+        }
+    }
+
     private void UpdateAutoRefreshTimer()
     {
         ConfigureAutoRefreshTimer(_arknightsAutoRefreshTimer, ViewModel.ArknightsAutoRefreshIntervalMinutes);
@@ -112,6 +131,16 @@ public sealed partial class MainWindow : Window
         if (ViewModel.AutoRefreshEnabled)
         {
             timer.Start();
+        }
+    }
+
+    private void UpdateAutoSignTimer()
+    {
+        _autoSignTimer.Stop();
+        _autoSignTimer.Interval = TimeSpan.FromSeconds(30);
+        if (ViewModel.AutoSignEnabled)
+        {
+            _autoSignTimer.Start();
         }
     }
 
@@ -180,10 +209,12 @@ public sealed partial class MainWindow : Window
         _arknightsAutoRefreshTimer.Stop();
         _endfieldAutoRefreshTimer.Stop();
         _wutheringWavesAutoRefreshTimer.Stop();
+        _autoSignTimer.Stop();
         ViewModel.PropertyChanged -= ViewModel_OnPropertyChanged;
         ViewModel.CredentialApplied -= ViewModel_OnCredentialApplied;
         _arknightsAutoRefreshTimer.Tick -= ArknightsAutoRefreshTimer_OnTick;
         _endfieldAutoRefreshTimer.Tick -= EndfieldAutoRefreshTimer_OnTick;
         _wutheringWavesAutoRefreshTimer.Tick -= WutheringWavesAutoRefreshTimer_OnTick;
+        _autoSignTimer.Tick -= AutoSignTimer_OnTick;
     }
 }

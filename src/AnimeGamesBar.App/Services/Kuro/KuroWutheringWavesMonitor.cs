@@ -86,13 +86,19 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
             browserLike: true);
 
         var data = KuroClient.Get(document.RootElement, "data");
+        var weeklyVoyage = ReadWeeklyVoyage(data);
+        if (weeklyVoyage.Current <= 0)
+        {
+            weeklyVoyage = await ReadWeeklyVoyageFromBaseDataAsync(credential, player, weeklyVoyage, cancellationToken);
+        }
+
         var status = new WutheringWavesAccountStatus(
             PlayerName: KuroClient.ReadString(data, "roleName") ?? player.NickName,
             ServerName: KuroClient.ReadString(data, "serverName") ?? player.ServerName,
             Waveplates: ReadResource(data, "energyData", "结晶波片"),
             CrystalSolvent: ReadResource(data, "storeEnergyData", "结晶单质"),
             DailyActivity: ReadResource(data, "livenessData", "每日活跃度"),
-            WeeklyVoyage: ReadWeeklyVoyage(data),
+            WeeklyVoyage: weeklyVoyage,
             WeeklyBoss: ReadResource(data, "weeklyData", "战歌重奏次数"),
             BattlePassLevel: ReadBattlePassLevel(data),
             TowerResetAt: ReadTimestamp(data, "towerData", "refreshTimeStamp"),
@@ -118,12 +124,15 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
 
     private static WutheringWavesResourceStatus ReadBattlePassLevel(JsonElement root)
     {
-        return TryReadBattlePassEntry(
+        var entry = TryReadBattlePassEntry(
             root,
             "先约电台等级",
             name => name.Contains("等级", StringComparison.OrdinalIgnoreCase) ||
-                name.Contains("电台", StringComparison.OrdinalIgnoreCase)) ??
-            new WutheringWavesResourceStatus("先约电台等级", 0, 0);
+                name.Contains("电台", StringComparison.OrdinalIgnoreCase));
+
+        return entry is null
+            ? new WutheringWavesResourceStatus("先约电台等级", 0, 70)
+            : entry with { Maximum = 70 };
     }
 
     private static WutheringWavesResourceStatus ReadWeeklyVoyage(JsonElement root)
@@ -141,6 +150,51 @@ public sealed class KuroWutheringWavesMonitor : IKuroMonitor
         }
 
         return new WutheringWavesResourceStatus("周度游历", 0, 6000);
+    }
+
+    private async Task<WutheringWavesResourceStatus> ReadWeeklyVoyageFromBaseDataAsync(
+        SklandCredential credential,
+        ArknightsPlayerBinding player,
+        WutheringWavesResourceStatus fallback,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var document = await _client.PostFormAsync(
+                credential,
+                "/aki/roleBox/akiBox/baseData",
+                new Dictionary<string, string>
+                {
+                    ["gameId"] = GameId.ToString(),
+                    ["roleId"] = player.Uid,
+                    ["serverId"] = player.ChannelMasterId
+                },
+                cancellationToken,
+                browserLike: true);
+
+            var dataText = KuroClient.ReadString(document.RootElement, "data");
+            if (string.IsNullOrWhiteSpace(dataText))
+            {
+                return fallback;
+            }
+
+            using var dataDocument = JsonDocument.Parse(dataText);
+            var data = dataDocument.RootElement;
+            var current = KuroClient.ReadInt(data, "rougeScore") ?? fallback.Current;
+            var maximum = KuroClient.ReadInt(data, "rougeScoreLimit") ?? fallback.Maximum;
+            var name = KuroClient.ReadString(data, "rougeTitle") ?? fallback.Name;
+            return new WutheringWavesResourceStatus(
+                string.IsNullOrWhiteSpace(name) ? "周度游历" : name,
+                current,
+                maximum > 0 ? maximum : 6000,
+                fallback.RefreshAt,
+                fallback.ExpireAt,
+                fallback.Value);
+        }
+        catch
+        {
+            return fallback;
+        }
     }
 
     private static WutheringWavesResourceStatus? TryReadBattlePassEntry(

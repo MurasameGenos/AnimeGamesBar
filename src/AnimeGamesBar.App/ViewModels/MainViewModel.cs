@@ -58,6 +58,10 @@ public sealed class MainViewModel : ObservableObject
     private bool _manualSignInAllGames;
     private bool _notificationsEnabled = true;
     private bool _startWithWindows;
+    private double _autoSignHour = 9;
+    private double _autoSignMinute;
+    private bool _credentialsLoaded;
+    private DateOnly? _lastScheduledAutoSignDate;
     private bool _settingsLoaded;
     private bool _isApplyingSettings;
 
@@ -90,6 +94,7 @@ public sealed class MainViewModel : ObservableObject
         RefreshEndfieldCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.Endfield, cancellationToken));
         RefreshWutheringWavesCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.WutheringWaves, cancellationToken));
         SignInCommand = new AsyncCommand(SignInManualAsync);
+        ScheduledSignInCommand = new AsyncCommand(cancellationToken => SignInAllAsync(cancellationToken, showNotification: NotificationsEnabled));
         SaveCredentialCommand = new AsyncCommand(SaveCredentialAsync);
         ClearCredentialCommand = new AsyncCommand(ClearCredentialAsync);
         StartLoginCommand = new AsyncCommand(StartLoginAsync);
@@ -142,6 +147,8 @@ public sealed class MainViewModel : ObservableObject
     public AsyncCommand RefreshWutheringWavesCommand { get; }
 
     public AsyncCommand SignInCommand { get; }
+
+    public AsyncCommand ScheduledSignInCommand { get; }
 
     public AsyncCommand SaveCredentialCommand { get; }
 
@@ -287,10 +294,45 @@ public sealed class MainViewModel : ObservableObject
         {
             if (SetProperty(ref _autoSignEnabled, value))
             {
+                OnPropertyChanged(nameof(AutoSignScheduleSummary));
                 _ = SaveSettingsAsync();
             }
         }
     }
+
+    public double AutoSignHour
+    {
+        get => _autoSignHour;
+        set
+        {
+            var hour = Math.Clamp(double.IsNaN(value) ? 9 : Math.Round(value), 0, 23);
+            if (SetProperty(ref _autoSignHour, hour))
+            {
+                OnPropertyChanged(nameof(AutoSignScheduleSummary));
+                _ = SaveSettingsAsync();
+            }
+        }
+    }
+
+    public double AutoSignMinute
+    {
+        get => _autoSignMinute;
+        set
+        {
+            var minute = Math.Clamp(double.IsNaN(value) ? 0 : Math.Round(value), 0, 59);
+            if (SetProperty(ref _autoSignMinute, minute))
+            {
+                OnPropertyChanged(nameof(AutoSignScheduleSummary));
+                _ = SaveSettingsAsync();
+            }
+        }
+    }
+
+    public TimeSpan AutoSignTime => new((int)AutoSignHour, (int)AutoSignMinute, 0);
+
+    public string AutoSignScheduleSummary => AutoSignEnabled
+        ? $"每天 {AutoSignHour:00}:{AutoSignMinute:00} 自动签到"
+        : "自动签到已关闭";
 
     public bool ManualSignInAllGames
     {
@@ -611,6 +653,7 @@ public sealed class MainViewModel : ObservableObject
         _arknightsCredential = arknightsCredential ?? legacyCredential ?? SklandCredential.Empty;
         _endfieldCredential = endfieldCredential ?? legacyCredential ?? SklandCredential.Empty;
         _wutheringWavesCredential = wutheringWavesCredential ?? SklandCredential.Empty;
+        _credentialsLoaded = true;
 
         if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret && !_wutheringWavesCredential.HasAnySecret)
         {
@@ -639,11 +682,16 @@ public sealed class MainViewModel : ObservableObject
             _arknightsAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.ArknightsAutoRefreshIntervalMinutes);
             _endfieldAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.EndfieldAutoRefreshIntervalMinutes);
             _wutheringWavesAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.WutheringWavesAutoRefreshIntervalMinutes);
+            _autoSignHour = NormalizeAutoSignHour(settings.AutoSignHour);
+            _autoSignMinute = NormalizeAutoSignMinute(settings.AutoSignMinute);
             OnPropertyChanged(nameof(AutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(AutoRefreshSummary));
             OnPropertyChanged(nameof(ArknightsAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(EndfieldAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(WutheringWavesAutoRefreshIntervalMinutes));
+            OnPropertyChanged(nameof(AutoSignHour));
+            OnPropertyChanged(nameof(AutoSignMinute));
+            OnPropertyChanged(nameof(AutoSignScheduleSummary));
         }
         finally
         {
@@ -670,7 +718,9 @@ public sealed class MainViewModel : ObservableObject
                     _arknightsAutoRefreshIntervalMinutes,
                     _endfieldAutoRefreshIntervalMinutes,
                     _wutheringWavesAutoRefreshIntervalMinutes,
-                    ManualSignInAllGames),
+                    ManualSignInAllGames,
+                    (int)AutoSignHour,
+                    (int)AutoSignMinute),
                 CancellationToken.None);
         }
         catch (Exception ex)
@@ -810,12 +860,34 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task TryStartupSignInAsync(CancellationToken cancellationToken)
     {
-        if (!AutoSignEnabled)
+        if (!TryReserveScheduledAutoSign(DateTime.Now))
         {
             return;
         }
 
         await SignInAllAsync(cancellationToken, showNotification: NotificationsEnabled);
+    }
+
+    public bool TryReserveScheduledAutoSign(DateTime now)
+    {
+        if (!_credentialsLoaded || !AutoSignEnabled)
+        {
+            return false;
+        }
+
+        if (now.TimeOfDay < AutoSignTime)
+        {
+            return false;
+        }
+
+        var today = DateOnly.FromDateTime(now);
+        if (_lastScheduledAutoSignDate == today)
+        {
+            return false;
+        }
+
+        _lastScheduledAutoSignDate = today;
+        return true;
     }
 
     private async Task SignInAllAsync(CancellationToken cancellationToken, bool showNotification)
@@ -1385,6 +1457,16 @@ public sealed class MainViewModel : ObservableObject
     private static double NormalizeAutoRefreshInterval(double value)
     {
         return Math.Clamp(double.IsNaN(value) || value <= 0 ? 5 : value, 1, 180);
+    }
+
+    private static int NormalizeAutoSignHour(int value)
+    {
+        return Math.Clamp(value, 0, 23);
+    }
+
+    private static int NormalizeAutoSignMinute(int value)
+    {
+        return Math.Clamp(value, 0, 59);
     }
 
     private void NotifySnapshotChanged()

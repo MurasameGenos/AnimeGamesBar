@@ -804,6 +804,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <Border
@@ -871,6 +872,46 @@
                                 IsOn="{Binding ManualSignInAllGames, Mode=TwoWay}"
                                 OffContent="&#x5F53;&#x524D;&#x9875;&#x9762;"
                                 OnContent="&#x5168;&#x90E8;&#x6E38;&#x620F;" />
+                        </Border>
+
+                        <Border
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            Background="{StaticResource CardSurfaceBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="16">
+                            <StackPanel Spacing="10">
+                                <TextBlock
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource AppTextBrush}"
+                                    Text="{Binding AutoSignScheduleSummary}" />
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <NumberBox
+                                        Grid.Column="0"
+                                        Header="&#x5C0F;&#x65F6;"
+                                        LargeChange="1"
+                                        Maximum="23"
+                                        Minimum="0"
+                                        SmallChange="1"
+                                        SpinButtonPlacementMode="Compact"
+                                        Value="{Binding AutoSignHour, Mode=TwoWay}" />
+                                    <NumberBox
+                                        Grid.Column="1"
+                                        Header="&#x5206;&#x949F;"
+                                        LargeChange="5"
+                                        Maximum="59"
+                                        Minimum="0"
+                                        SmallChange="1"
+                                        SpinButtonPlacementMode="Compact"
+                                        Value="{Binding AutoSignMinute, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
                         </Border>
                     </Grid>
                 </Grid>
