@@ -65,6 +65,10 @@ public sealed partial class MainWindow : Window
     private void ViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(MainViewModel.AutoRefreshEnabled)
+            or nameof(MainViewModel.ArknightsAutoRefreshEnabled)
+            or nameof(MainViewModel.EndfieldAutoRefreshEnabled)
+            or nameof(MainViewModel.WutheringWavesAutoRefreshEnabled)
+            or nameof(MainViewModel.YihuanAutoRefreshEnabled)
             or nameof(MainViewModel.AutoRefreshIntervalMinutes)
             or nameof(MainViewModel.ArknightsAutoRefreshIntervalMinutes)
             or nameof(MainViewModel.EndfieldAutoRefreshIntervalMinutes)
@@ -87,7 +91,7 @@ public sealed partial class MainWindow : Window
 
     private void ArknightsAutoRefreshTimer_OnTick(object? sender, object e)
     {
-        if (ViewModel.AutoRefreshEnabled && ViewModel.RefreshArknightsCommand.CanExecute(null))
+        if (ViewModel.ArknightsAutoRefreshEnabled && ViewModel.RefreshArknightsCommand.CanExecute(null))
         {
             ViewModel.RefreshArknightsCommand.Execute(null);
         }
@@ -95,7 +99,7 @@ public sealed partial class MainWindow : Window
 
     private void EndfieldAutoRefreshTimer_OnTick(object? sender, object e)
     {
-        if (ViewModel.AutoRefreshEnabled && ViewModel.RefreshEndfieldCommand.CanExecute(null))
+        if (ViewModel.EndfieldAutoRefreshEnabled && ViewModel.RefreshEndfieldCommand.CanExecute(null))
         {
             ViewModel.RefreshEndfieldCommand.Execute(null);
         }
@@ -103,7 +107,7 @@ public sealed partial class MainWindow : Window
 
     private void WutheringWavesAutoRefreshTimer_OnTick(object? sender, object e)
     {
-        if (ViewModel.AutoRefreshEnabled && ViewModel.RefreshWutheringWavesCommand.CanExecute(null))
+        if (ViewModel.WutheringWavesAutoRefreshEnabled && ViewModel.RefreshWutheringWavesCommand.CanExecute(null))
         {
             ViewModel.RefreshWutheringWavesCommand.Execute(null);
         }
@@ -111,7 +115,7 @@ public sealed partial class MainWindow : Window
 
     private void YihuanAutoRefreshTimer_OnTick(object? sender, object e)
     {
-        if (ViewModel.AutoRefreshEnabled && ViewModel.RefreshYihuanCommand.CanExecute(null))
+        if (ViewModel.YihuanAutoRefreshEnabled && ViewModel.RefreshYihuanCommand.CanExecute(null))
         {
             ViewModel.RefreshYihuanCommand.Execute(null);
         }
@@ -128,17 +132,17 @@ public sealed partial class MainWindow : Window
 
     private void UpdateAutoRefreshTimer()
     {
-        ConfigureAutoRefreshTimer(_arknightsAutoRefreshTimer, ViewModel.ArknightsAutoRefreshIntervalMinutes);
-        ConfigureAutoRefreshTimer(_endfieldAutoRefreshTimer, ViewModel.EndfieldAutoRefreshIntervalMinutes);
-        ConfigureAutoRefreshTimer(_wutheringWavesAutoRefreshTimer, ViewModel.WutheringWavesAutoRefreshIntervalMinutes);
-        ConfigureAutoRefreshTimer(_yihuanAutoRefreshTimer, ViewModel.YihuanAutoRefreshIntervalMinutes);
+        ConfigureAutoRefreshTimer(_arknightsAutoRefreshTimer, ViewModel.ArknightsAutoRefreshIntervalMinutes, ViewModel.ArknightsAutoRefreshEnabled);
+        ConfigureAutoRefreshTimer(_endfieldAutoRefreshTimer, ViewModel.EndfieldAutoRefreshIntervalMinutes, ViewModel.EndfieldAutoRefreshEnabled);
+        ConfigureAutoRefreshTimer(_wutheringWavesAutoRefreshTimer, ViewModel.WutheringWavesAutoRefreshIntervalMinutes, ViewModel.WutheringWavesAutoRefreshEnabled);
+        ConfigureAutoRefreshTimer(_yihuanAutoRefreshTimer, ViewModel.YihuanAutoRefreshIntervalMinutes, ViewModel.YihuanAutoRefreshEnabled);
     }
 
-    private void ConfigureAutoRefreshTimer(DispatcherTimer timer, double minutes)
+    private void ConfigureAutoRefreshTimer(DispatcherTimer timer, double minutes, bool enabled)
     {
         timer.Stop();
         timer.Interval = TimeSpan.FromMinutes(Math.Clamp(double.IsNaN(minutes) ? 5 : minutes, 1, 180));
-        if (ViewModel.AutoRefreshEnabled)
+        if (enabled)
         {
             timer.Start();
         }

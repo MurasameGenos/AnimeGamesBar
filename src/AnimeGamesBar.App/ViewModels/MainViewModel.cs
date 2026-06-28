@@ -56,7 +56,10 @@ public sealed class MainViewModel : ObservableObject
     private WutheringWavesAccountStatus? _wutheringWavesSnapshot;
     private YihuanAccountStatus? _yihuanSnapshot;
     private GameDashboardKind _selectedGame = GameDashboardKind.Arknights;
-    private bool _autoRefreshEnabled;
+    private bool _arknightsAutoRefreshEnabled;
+    private bool _endfieldAutoRefreshEnabled;
+    private bool _wutheringWavesAutoRefreshEnabled;
+    private bool _yihuanAutoRefreshEnabled;
     private double _arknightsAutoRefreshIntervalMinutes = 5;
     private double _endfieldAutoRefreshIntervalMinutes = 5;
     private double _wutheringWavesAutoRefreshIntervalMinutes = 5;
@@ -246,12 +249,17 @@ public sealed class MainViewModel : ObservableObject
 
     public bool AutoRefreshEnabled
     {
-        get => _autoRefreshEnabled;
+        get => GetAutoRefreshEnabled(_selectedGame);
         set
         {
-            if (SetProperty(ref _autoRefreshEnabled, value))
+            if (SetAutoRefreshEnabled(_selectedGame, value))
             {
                 OnPropertyChanged(nameof(AutoRefreshSummary));
+                OnPropertyChanged(nameof(ArknightsAutoRefreshEnabled));
+                OnPropertyChanged(nameof(EndfieldAutoRefreshEnabled));
+                OnPropertyChanged(nameof(WutheringWavesAutoRefreshEnabled));
+                OnPropertyChanged(nameof(YihuanAutoRefreshEnabled));
+                _ = SaveSettingsAsync();
             }
         }
     }
@@ -281,6 +289,14 @@ public sealed class MainViewModel : ObservableObject
     public double WutheringWavesAutoRefreshIntervalMinutes => _wutheringWavesAutoRefreshIntervalMinutes;
 
     public double YihuanAutoRefreshIntervalMinutes => _yihuanAutoRefreshIntervalMinutes;
+
+    public bool ArknightsAutoRefreshEnabled => _arknightsAutoRefreshEnabled;
+
+    public bool EndfieldAutoRefreshEnabled => _endfieldAutoRefreshEnabled;
+
+    public bool WutheringWavesAutoRefreshEnabled => _wutheringWavesAutoRefreshEnabled;
+
+    public bool YihuanAutoRefreshEnabled => _yihuanAutoRefreshEnabled;
 
     public string AutoRefreshSummary => AutoRefreshEnabled
         ? $"\u6BCF {AutoRefreshIntervalMinutes:0} \u5206\u949F\u5237\u65B0"
@@ -792,12 +808,21 @@ public sealed class MainViewModel : ObservableObject
             ServerChanEnabled = settings.ServerChanEnabled;
             ServerChanSendKey = settings.ServerChanSendKey;
             StartWithWindows = settings.StartWithWindows || _startupService.IsEnabled();
+            _arknightsAutoRefreshEnabled = settings.ArknightsAutoRefreshEnabled;
+            _endfieldAutoRefreshEnabled = settings.EndfieldAutoRefreshEnabled;
+            _wutheringWavesAutoRefreshEnabled = settings.WutheringWavesAutoRefreshEnabled;
+            _yihuanAutoRefreshEnabled = settings.YihuanAutoRefreshEnabled;
             _arknightsAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.ArknightsAutoRefreshIntervalMinutes);
             _endfieldAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.EndfieldAutoRefreshIntervalMinutes);
             _wutheringWavesAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.WutheringWavesAutoRefreshIntervalMinutes);
             _yihuanAutoRefreshIntervalMinutes = NormalizeAutoRefreshInterval(settings.YihuanAutoRefreshIntervalMinutes);
+            OnPropertyChanged(nameof(AutoRefreshEnabled));
             OnPropertyChanged(nameof(AutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(AutoRefreshSummary));
+            OnPropertyChanged(nameof(ArknightsAutoRefreshEnabled));
+            OnPropertyChanged(nameof(EndfieldAutoRefreshEnabled));
+            OnPropertyChanged(nameof(WutheringWavesAutoRefreshEnabled));
+            OnPropertyChanged(nameof(YihuanAutoRefreshEnabled));
             OnPropertyChanged(nameof(ArknightsAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(EndfieldAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(WutheringWavesAutoRefreshIntervalMinutes));
@@ -827,6 +852,10 @@ public sealed class MainViewModel : ObservableObject
                     AutoSignEnabled,
                     NotificationsEnabled,
                     StartWithWindows,
+                    _arknightsAutoRefreshEnabled,
+                    _endfieldAutoRefreshEnabled,
+                    _wutheringWavesAutoRefreshEnabled,
+                    _yihuanAutoRefreshEnabled,
                     _arknightsAutoRefreshIntervalMinutes,
                     _endfieldAutoRefreshIntervalMinutes,
                     _wutheringWavesAutoRefreshIntervalMinutes,
@@ -1633,6 +1662,30 @@ public sealed class MainViewModel : ObservableObject
         };
     }
 
+    private bool GetAutoRefreshEnabled(GameDashboardKind game)
+    {
+        return game switch
+        {
+            GameDashboardKind.Arknights => _arknightsAutoRefreshEnabled,
+            GameDashboardKind.Endfield => _endfieldAutoRefreshEnabled,
+            GameDashboardKind.WutheringWaves => _wutheringWavesAutoRefreshEnabled,
+            GameDashboardKind.Yihuan => _yihuanAutoRefreshEnabled,
+            _ => false
+        };
+    }
+
+    private bool SetAutoRefreshEnabled(GameDashboardKind game, bool value)
+    {
+        return game switch
+        {
+            GameDashboardKind.Arknights => SetProperty(ref _arknightsAutoRefreshEnabled, value, nameof(AutoRefreshEnabled)),
+            GameDashboardKind.Endfield => SetProperty(ref _endfieldAutoRefreshEnabled, value, nameof(AutoRefreshEnabled)),
+            GameDashboardKind.WutheringWaves => SetProperty(ref _wutheringWavesAutoRefreshEnabled, value, nameof(AutoRefreshEnabled)),
+            GameDashboardKind.Yihuan => SetProperty(ref _yihuanAutoRefreshEnabled, value, nameof(AutoRefreshEnabled)),
+            _ => false
+        };
+    }
+
     private bool SetAutoRefreshInterval(GameDashboardKind game, double value)
     {
         value = NormalizeAutoRefreshInterval(value);
@@ -1761,6 +1814,7 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(CookieFieldHeader));
         OnPropertyChanged(nameof(UserIdFieldHeader));
         OnPropertyChanged(nameof(DeviceIdFieldHeader));
+        OnPropertyChanged(nameof(AutoRefreshEnabled));
         OnPropertyChanged(nameof(AutoRefreshIntervalMinutes));
         OnPropertyChanged(nameof(AutoRefreshSummary));
         OnPropertyChanged(nameof(SignInButtonText));
