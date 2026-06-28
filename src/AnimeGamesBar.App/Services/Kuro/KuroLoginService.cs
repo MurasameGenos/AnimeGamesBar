@@ -5,6 +5,13 @@ namespace AnimeGamesBar.App.Services.Kuro;
 
 public sealed class KuroLoginService : IKuroLoginService
 {
+    private readonly KuroMobileLoginClient _mobileLoginClient;
+
+    public KuroLoginService(KuroMobileLoginClient mobileLoginClient)
+    {
+        _mobileLoginClient = mobileLoginClient;
+    }
+
     public async Task<SklandCredential?> LoginAsync(
         Window owner,
         SklandCredential currentCredential,
@@ -12,23 +19,9 @@ public sealed class KuroLoginService : IKuroLoginService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var window = new KuroLoginWindow(currentCredential);
+        var window = new KuroMobileLoginWindow(_mobileLoginClient, currentCredential);
         window.Activate();
 
-        var snapshot = await window.WaitForCredentialAsync(cancellationToken);
-        if (snapshot is null)
-        {
-            return null;
-        }
-
-        return new SklandCredential(
-            currentCredential.Cred,
-            snapshot.Token.Trim(),
-            snapshot.Cookie.Trim(),
-            snapshot.UserId.Trim(),
-            string.IsNullOrWhiteSpace(snapshot.DeviceId)
-                ? currentCredential.DeviceId
-                : snapshot.DeviceId.Trim(),
-            DateTimeOffset.Now);
+        return await window.WaitForCredentialAsync(cancellationToken);
     }
 }
