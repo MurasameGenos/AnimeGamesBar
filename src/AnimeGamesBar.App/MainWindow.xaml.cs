@@ -56,9 +56,9 @@ public sealed partial class MainWindow : Window
 
     private void AutoRefreshTimer_OnTick(object? sender, object e)
     {
-        if (ViewModel.AutoRefreshEnabled && ViewModel.RefreshCommand.CanExecute(null))
+        if (ViewModel.AutoRefreshEnabled && ViewModel.RefreshAllCommand.CanExecute(null))
         {
-            ViewModel.RefreshCommand.Execute(null);
+            ViewModel.RefreshAllCommand.Execute(null);
         }
     }
 

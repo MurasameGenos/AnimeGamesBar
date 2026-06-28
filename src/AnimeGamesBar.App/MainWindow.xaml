@@ -87,6 +87,10 @@
 
                         <Button
                             Grid.Column="0"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
                             Padding="0"
                             Background="Transparent"
                             BorderBrush="Transparent"
@@ -99,6 +103,10 @@
 
                         <Button
                             Grid.Column="1"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
                             Padding="0"
                             Background="Transparent"
                             BorderBrush="Transparent"

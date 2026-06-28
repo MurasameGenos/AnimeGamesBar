@@ -18,6 +18,8 @@ public sealed class MainViewModel : ObservableObject
     private readonly List<ArknightsPlayerBinding> _arknightsBindings = new();
     private readonly List<ArknightsPlayerBinding> _endfieldBindings = new();
 
+    private SklandCredential _arknightsCredential = SklandCredential.Empty;
+    private SklandCredential _endfieldCredential = SklandCredential.Empty;
     private string _cred = string.Empty;
     private string _token = string.Empty;
     private string _cookie = string.Empty;
@@ -26,7 +28,8 @@ public sealed class MainViewModel : ObservableObject
     private string _doctorName = "\u672A\u767B\u5F55";
     private string _statusMessage = string.Empty;
     private InfoBarSeverity _statusSeverity = InfoBarSeverity.Informational;
-    private ArknightsPlayerBinding? _selectedPlayerBinding;
+    private ArknightsPlayerBinding? _selectedArknightsBinding;
+    private ArknightsPlayerBinding? _selectedEndfieldBinding;
     private ArknightsAccountStatus? _arknightsSnapshot;
     private EndfieldAccountStatus? _endfieldSnapshot;
     private GameDashboardKind _selectedGame = GameDashboardKind.Arknights;
@@ -43,6 +46,7 @@ public sealed class MainViewModel : ObservableObject
         _loginService = loginService;
 
         RefreshCommand = new AsyncCommand(RefreshAsync);
+        RefreshAllCommand = new AsyncCommand(RefreshAllAsync);
         SaveCredentialCommand = new AsyncCommand(SaveCredentialAsync);
         ClearCredentialCommand = new AsyncCommand(ClearCredentialAsync);
         StartLoginCommand = new AsyncCommand(StartLoginAsync);
@@ -67,6 +71,8 @@ public sealed class MainViewModel : ObservableObject
     public event EventHandler? CredentialApplied;
 
     public AsyncCommand RefreshCommand { get; }
+
+    public AsyncCommand RefreshAllCommand { get; }
 
     public AsyncCommand SaveCredentialCommand { get; }
 
@@ -110,10 +116,13 @@ public sealed class MainViewModel : ObservableObject
 
     public ArknightsPlayerBinding? SelectedPlayerBinding
     {
-        get => _selectedPlayerBinding;
+        get => CurrentSelectedBinding();
         set
         {
-            if (SetProperty(ref _selectedPlayerBinding, value))
+            var changed = _selectedGame == GameDashboardKind.Arknights
+                ? SetProperty(ref _selectedArknightsBinding, value)
+                : SetProperty(ref _selectedEndfieldBinding, value);
+            if (changed)
             {
                 UpdateHeaderName();
                 NotifyAccountChanged();
@@ -329,52 +338,38 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task InitializeAsync()
     {
-        var credential = await _credentialStore.LoadAsync(CancellationToken.None);
-        if (credential is null)
+        var legacyCredential = await _credentialStore.LoadAsync(CancellationToken.None);
+        var arknightsCredential = await _credentialStore.LoadAsync(CredentialScopeFor(GameDashboardKind.Arknights), CancellationToken.None);
+        var endfieldCredential = await _credentialStore.LoadAsync(CredentialScopeFor(GameDashboardKind.Endfield), CancellationToken.None);
+
+        _arknightsCredential = arknightsCredential ?? legacyCredential ?? SklandCredential.Empty;
+        _endfieldCredential = endfieldCredential ?? legacyCredential ?? SklandCredential.Empty;
+
+        if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret)
         {
             SetStatus("\u672A\u627E\u5230\u672C\u5730\u51ED\u636E\u3002", InfoBarSeverity.Informational);
             return;
         }
 
-        ApplyCredential(credential);
+        ApplyCredential(GetCredentialFor(_selectedGame));
         SetStatus("\u5DF2\u52A0\u8F7D\u672C\u5730\u51ED\u636E\u3002", InfoBarSeverity.Success);
+
+        await RefreshAllAsync(CancellationToken.None);
     }
 
     private async Task RefreshAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var credential = BuildCredential();
+            CommitCurrentCredentialFields();
+            var credential = GetCredentialFor(_selectedGame);
             if (!credential.HasAnySecret)
             {
                 SetStatus("\u7F3A\u5C11\u8D26\u53F7\u51ED\u636E\u3002", InfoBarSeverity.Warning);
                 return;
             }
 
-            await EnsureBindingsAsync(credential, cancellationToken);
-            credential = BuildCredential();
-
-            if (SelectedPlayerBinding is null)
-            {
-                SetStatus($"\u6CA1\u6709\u627E\u5230\u5DF2\u7ED1\u5B9A\u7684{SelectedGameTitle}\u8D26\u53F7\u3002", InfoBarSeverity.Warning);
-                return;
-            }
-
-            DateTimeOffset updatedAt;
-            if (_selectedGame == GameDashboardKind.Arknights)
-            {
-                _arknightsSnapshot = await _monitor.GetStatusAsync(credential, SelectedPlayerBinding, cancellationToken);
-                updatedAt = _arknightsSnapshot.UpdatedAt;
-            }
-            else
-            {
-                _endfieldSnapshot = await _monitor.GetEndfieldStatusAsync(credential, SelectedPlayerBinding, cancellationToken);
-                updatedAt = _endfieldSnapshot.UpdatedAt;
-            }
-
-            UpdateHeaderName();
-            NotifySnapshotChanged();
-            SetStatus($"\u5DF2\u5237\u65B0\uFF1A{updatedAt:HH:mm:ss}", InfoBarSeverity.Success);
+            await RefreshGameAsync(_selectedGame, credential, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -382,46 +377,152 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    private async Task SaveCredentialAsync(CancellationToken cancellationToken)
+    private async Task RefreshAllAsync(CancellationToken cancellationToken)
     {
-        await _credentialStore.SaveAsync(BuildCredential(), cancellationToken);
-        SetStatus("\u51ED\u636E\u5DF2\u4FDD\u5B58\u3002", InfoBarSeverity.Success);
+        try
+        {
+            CommitCurrentCredentialFields();
+            if (!_arknightsCredential.HasAnySecret && !_endfieldCredential.HasAnySecret)
+            {
+                SetStatus("\u7F3A\u5C11\u8D26\u53F7\u51ED\u636E\u3002", InfoBarSeverity.Warning);
+                return;
+            }
+
+            var refreshed = 0;
+            if (_arknightsCredential.HasAnySecret)
+            {
+                refreshed += await RefreshGameAsync(GameDashboardKind.Arknights, _arknightsCredential, cancellationToken, showStatus: false) ? 1 : 0;
+            }
+
+            if (_endfieldCredential.HasAnySecret)
+            {
+                refreshed += await RefreshGameAsync(GameDashboardKind.Endfield, _endfieldCredential, cancellationToken, showStatus: false) ? 1 : 0;
+            }
+
+            if (refreshed == 0)
+            {
+                SetStatus("\u6CA1\u6709\u627E\u5230\u5DF2\u7ED1\u5B9A\u7684\u6E38\u620F\u8D26\u53F7\u3002", InfoBarSeverity.Warning);
+                return;
+            }
+
+            UpdateHeaderName();
+            NotifySnapshotChanged();
+            SetStatus($"\u5DF2\u5237\u65B0\u5168\u90E8\u6E38\u620F\uFF1A{DateTimeOffset.Now:HH:mm:ss}", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(ex.Message, InfoBarSeverity.Error);
+        }
     }
 
-    private async Task EnsureBindingsAsync(SklandCredential credential, CancellationToken cancellationToken)
+    private async Task<bool> RefreshGameAsync(
+        GameDashboardKind game,
+        SklandCredential credential,
+        CancellationToken cancellationToken,
+        bool showStatus = true)
     {
-        var target = CurrentBindingCache();
+        await EnsureBindingsAsync(game, credential, cancellationToken);
+        credential = GetCredentialFor(game);
+
+        var selectedBinding = GetSelectedBinding(game);
+        if (selectedBinding is null)
+        {
+            if (showStatus)
+            {
+                SetStatus($"\u6CA1\u6709\u627E\u5230\u5DF2\u7ED1\u5B9A\u7684{GameTitle(game)}\u8D26\u53F7\u3002", InfoBarSeverity.Warning);
+            }
+
+            return false;
+        }
+
+        DateTimeOffset updatedAt;
+        if (game == GameDashboardKind.Arknights)
+        {
+            _arknightsSnapshot = await _monitor.GetStatusAsync(credential, selectedBinding, cancellationToken);
+            updatedAt = _arknightsSnapshot.UpdatedAt;
+        }
+        else
+        {
+            _endfieldSnapshot = await _monitor.GetEndfieldStatusAsync(credential, selectedBinding, cancellationToken);
+            updatedAt = _endfieldSnapshot.UpdatedAt;
+        }
+
+        if (game == _selectedGame)
+        {
+            SyncDisplayedBindings();
+            UpdateHeaderName();
+        }
+
+        NotifySnapshotChanged();
+        if (showStatus)
+        {
+            SetStatus($"\u5DF2\u5237\u65B0{GameTitle(game)}\uFF1A{updatedAt:HH:mm:ss}", InfoBarSeverity.Success);
+        }
+
+        return true;
+    }
+
+    private async Task SaveCredentialAsync(CancellationToken cancellationToken)
+    {
+        CommitCurrentCredentialFields();
+        await SaveCredentialForGameAsync(_selectedGame, GetCredentialFor(_selectedGame), cancellationToken);
+        SetStatus($"{SelectedGameTitle}\u51ED\u636E\u5DF2\u4FDD\u5B58\u3002", InfoBarSeverity.Success);
+    }
+
+    private async Task EnsureBindingsAsync(GameDashboardKind game, SklandCredential credential, CancellationToken cancellationToken)
+    {
+        var target = BindingCache(game);
         if (target.Count == 0)
         {
-            var bindingResult = await _monitor.GetBindingsAsync(credential, CurrentAppCode(), cancellationToken);
+            var bindingResult = await _monitor.GetBindingsAsync(credential, AppCodeFor(game), cancellationToken);
             if (!string.IsNullOrWhiteSpace(bindingResult.ResolvedUserId) &&
-                !string.Equals(UserId, bindingResult.ResolvedUserId, StringComparison.Ordinal))
+                !string.Equals(credential.UserId, bindingResult.ResolvedUserId, StringComparison.Ordinal))
             {
-                UserId = bindingResult.ResolvedUserId;
-                credential = BuildCredential();
-                await _credentialStore.SaveAsync(credential, cancellationToken);
+                credential = credential with { UserId = bindingResult.ResolvedUserId };
+                SetCredentialFor(game, credential);
+                await SaveCredentialForGameAsync(game, credential, cancellationToken);
+                if (game == _selectedGame)
+                {
+                    ApplyCredential(credential);
+                }
             }
 
             target.Clear();
             target.AddRange(bindingResult.Bindings);
         }
 
-        SyncDisplayedBindings();
+        if (game == _selectedGame)
+        {
+            SyncDisplayedBindings();
+        }
+        else
+        {
+            EnsureSelectedBinding(game);
+        }
     }
 
     private async Task ClearCredentialAsync(CancellationToken cancellationToken)
     {
-        await _credentialStore.ClearAsync(cancellationToken);
+        var game = _selectedGame;
+        await _credentialStore.ClearAsync(CredentialScopeFor(game), cancellationToken);
+        SetCredentialFor(game, SklandCredential.Empty);
         ApplyCredential(SklandCredential.Empty);
-        _arknightsBindings.Clear();
-        _endfieldBindings.Clear();
+        BindingCache(game).Clear();
         PlayerBindings.Clear();
-        SelectedPlayerBinding = null;
-        _arknightsSnapshot = null;
-        _endfieldSnapshot = null;
+        SetSelectedBinding(game, null);
+        OnPropertyChanged(nameof(SelectedPlayerBinding));
+        if (game == GameDashboardKind.Arknights)
+        {
+            _arknightsSnapshot = null;
+        }
+        else
+        {
+            _endfieldSnapshot = null;
+        }
+
         DoctorName = "\u672A\u767B\u5F55";
         NotifySnapshotChanged();
-        SetStatus("\u672C\u5730\u51ED\u636E\u5DF2\u6E05\u9664\u3002", InfoBarSeverity.Success);
+        SetStatus($"{SelectedGameTitle}\u672C\u5730\u51ED\u636E\u5DF2\u6E05\u9664\u3002", InfoBarSeverity.Success);
     }
 
     private async Task StartLoginAsync(CancellationToken cancellationToken)
@@ -434,24 +535,43 @@ public sealed class MainViewModel : ObservableObject
                 return;
             }
 
-            var credential = await _loginService.LoginAsync(OwnerWindow, BuildCredential(), cancellationToken);
+            CommitCurrentCredentialFields();
+            var game = _selectedGame;
+            var previousCredential = GetCredentialFor(game);
+            var credential = await _loginService.LoginAsync(OwnerWindow, previousCredential, cancellationToken);
             if (credential is null)
             {
                 SetStatus("\u5DF2\u53D6\u6D88\u767B\u5F55\u3002", InfoBarSeverity.Informational);
                 return;
             }
 
+            var credentialChanged =
+                !string.Equals(previousCredential.Cred, credential.Cred, StringComparison.Ordinal) ||
+                !string.Equals(previousCredential.UserId, credential.UserId, StringComparison.Ordinal);
+
+            SetCredentialFor(game, credential);
             ApplyCredential(credential);
-            await _credentialStore.SaveAsync(credential, cancellationToken);
-            _arknightsBindings.Clear();
-            _endfieldBindings.Clear();
-            PlayerBindings.Clear();
-            SelectedPlayerBinding = null;
-            _arknightsSnapshot = null;
-            _endfieldSnapshot = null;
-            NotifySnapshotChanged();
+            await SaveCredentialForGameAsync(game, credential, cancellationToken);
+            if (credentialChanged)
+            {
+                BindingCache(game).Clear();
+                PlayerBindings.Clear();
+                SetSelectedBinding(game, null);
+                OnPropertyChanged(nameof(SelectedPlayerBinding));
+                if (game == GameDashboardKind.Arknights)
+                {
+                    _arknightsSnapshot = null;
+                }
+                else
+                {
+                    _endfieldSnapshot = null;
+                }
+
+                NotifySnapshotChanged();
+            }
+
             SetStatus("\u767B\u5F55\u51ED\u636E\u5DF2\u4FDD\u5B58\uFF0C\u6B63\u5728\u9A8C\u8BC1\u6570\u636E\u6293\u53D6\u3002", InfoBarSeverity.Success);
-            await RefreshAsync(cancellationToken);
+            await RefreshGameAsync(game, credential, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -468,6 +588,11 @@ public sealed class MainViewModel : ObservableObject
             UserId.Trim(),
             string.IsNullOrWhiteSpace(DeviceId) ? Guid.NewGuid().ToString("N") : DeviceId.Trim(),
             DateTimeOffset.Now);
+    }
+
+    private void CommitCurrentCredentialFields()
+    {
+        SetCredentialFor(_selectedGame, BuildCredential());
     }
 
     private void ApplyCredential(SklandCredential credential)
@@ -489,26 +614,92 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
+        CommitCurrentCredentialFields();
         _selectedGame = game;
+        ApplyCredential(GetCredentialFor(game));
         SyncDisplayedBindings();
         UpdateHeaderName();
         NotifyGameChanged();
         NotifySnapshotChanged();
     }
 
-    private string CurrentAppCode()
+    private async Task SaveCredentialForGameAsync(
+        GameDashboardKind game,
+        SklandCredential credential,
+        CancellationToken cancellationToken)
     {
-        return _selectedGame == GameDashboardKind.Arknights ? ArknightsAppCode : EndfieldAppCode;
+        await _credentialStore.SaveAsync(CredentialScopeFor(game), credential, cancellationToken);
+    }
+
+    private static string CredentialScopeFor(GameDashboardKind game)
+    {
+        return game == GameDashboardKind.Arknights ? "arknights" : "endfield";
+    }
+
+    private SklandCredential GetCredentialFor(GameDashboardKind game)
+    {
+        return game == GameDashboardKind.Arknights ? _arknightsCredential : _endfieldCredential;
+    }
+
+    private void SetCredentialFor(GameDashboardKind game, SklandCredential credential)
+    {
+        if (game == GameDashboardKind.Arknights)
+        {
+            _arknightsCredential = credential;
+        }
+        else
+        {
+            _endfieldCredential = credential;
+        }
+    }
+
+    private static string AppCodeFor(GameDashboardKind game)
+    {
+        return game == GameDashboardKind.Arknights ? ArknightsAppCode : EndfieldAppCode;
+    }
+
+    private List<ArknightsPlayerBinding> BindingCache(GameDashboardKind game)
+    {
+        return game == GameDashboardKind.Arknights ? _arknightsBindings : _endfieldBindings;
     }
 
     private List<ArknightsPlayerBinding> CurrentBindingCache()
     {
-        return _selectedGame == GameDashboardKind.Arknights ? _arknightsBindings : _endfieldBindings;
+        return BindingCache(_selectedGame);
+    }
+
+    private ArknightsPlayerBinding? CurrentSelectedBinding()
+    {
+        return GetSelectedBinding(_selectedGame);
+    }
+
+    private ArknightsPlayerBinding? GetSelectedBinding(GameDashboardKind game)
+    {
+        return game == GameDashboardKind.Arknights ? _selectedArknightsBinding : _selectedEndfieldBinding;
+    }
+
+    private void SetSelectedBinding(GameDashboardKind game, ArknightsPlayerBinding? binding)
+    {
+        if (game == GameDashboardKind.Arknights)
+        {
+            _selectedArknightsBinding = binding;
+        }
+        else
+        {
+            _selectedEndfieldBinding = binding;
+        }
+    }
+
+    private static string GameTitle(GameDashboardKind game)
+    {
+        return game == GameDashboardKind.Arknights
+            ? "\u660E\u65E5\u65B9\u821F"
+            : "\u660E\u65E5\u65B9\u821F\uFF1A\u7EC8\u672B\u5730";
     }
 
     private void SyncDisplayedBindings()
     {
-        var currentUid = SelectedPlayerBinding?.Uid;
+        var currentUid = CurrentSelectedBinding()?.Uid;
         var bindings = CurrentBindingCache();
 
         PlayerBindings.Clear();
@@ -517,8 +708,23 @@ public sealed class MainViewModel : ObservableObject
             PlayerBindings.Add(binding);
         }
 
-        SelectedPlayerBinding = PlayerBindings.FirstOrDefault(binding => binding.Uid == currentUid) ??
+        var selected = PlayerBindings.FirstOrDefault(binding => binding.Uid == currentUid) ??
             PlayerBindings.FirstOrDefault();
+        SetSelectedBinding(_selectedGame, selected);
+        OnPropertyChanged(nameof(SelectedPlayerBinding));
+        NotifyAccountChanged();
+    }
+
+    private void EnsureSelectedBinding(GameDashboardKind game)
+    {
+        var selected = GetSelectedBinding(game);
+        var bindings = BindingCache(game);
+        if (selected is not null && bindings.Any(binding => binding.Uid == selected.Uid))
+        {
+            return;
+        }
+
+        SetSelectedBinding(game, bindings.FirstOrDefault());
     }
 
     private void UpdateHeaderName()
