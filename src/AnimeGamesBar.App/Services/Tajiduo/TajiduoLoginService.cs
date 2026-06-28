@@ -18,9 +18,6 @@ public sealed class TajiduoLoginService : ITajiduoLoginService
         CancellationToken cancellationToken)
     {
         var window = new TajiduoLoginWindow(_client, currentCredential);
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-        var ownerHwnd = WinRT.Interop.WindowNative.GetWindowHandle(owner);
-        WinRT.Interop.InitializeWithWindow.Initialize(window, ownerHwnd);
         window.Activate();
         return await window.WaitForCredentialAsync(cancellationToken);
     }
