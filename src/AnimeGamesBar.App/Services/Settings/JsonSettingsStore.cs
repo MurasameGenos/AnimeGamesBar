@@ -4,6 +4,7 @@ namespace AnimeGamesBar.App.Services.Settings;
 
 public sealed class JsonSettingsStore : ISettingsStore
 {
+    private static readonly SemaphoreSlim SettingsFileGate = new(1, 1);
     private static readonly string SettingsDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "AnimeGamesBar");
@@ -30,8 +31,20 @@ public sealed class JsonSettingsStore : ISettingsStore
 
     public async Task SaveAsync(AppSettings settings, CancellationToken cancellationToken)
     {
-        Directory.CreateDirectory(SettingsDirectory);
-        await using var stream = File.Create(SettingsPath);
-        await JsonSerializer.SerializeAsync(stream, settings, cancellationToken: cancellationToken);
+        await SettingsFileGate.WaitAsync(cancellationToken);
+        try
+        {
+            Directory.CreateDirectory(SettingsDirectory);
+            await using var stream = new FileStream(
+                SettingsPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.Read);
+            await JsonSerializer.SerializeAsync(stream, settings, cancellationToken: cancellationToken);
+        }
+        finally
+        {
+            SettingsFileGate.Release();
+        }
     }
 }

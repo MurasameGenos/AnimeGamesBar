@@ -1083,18 +1083,33 @@
                                     Style="{StaticResource MutedTextStyle}"
                                     Text="&#x9009;&#x62E9;&#x65E5;&#x5E38;&#x3001;&#x5468;&#x5E38;&#x6216;&#x5468;&#x671F;&#x540E;&#xFF0C;&#x53EA;&#x663E;&#x793A;&#x5BF9;&#x5E94;&#x7684;&#x63D0;&#x9192;&#x6761;&#x4EF6;&#x3002;" />
                             </StackPanel>
-                            <Button
+                            <StackPanel
                                 Grid.Column="1"
-                                MinHeight="36"
-                                Padding="14,6"
-                                Background="{StaticResource AppButtonBrush}"
-                                Command="{Binding CloseNotificationRulesSettingsCommand}"
-                                Foreground="{StaticResource AppTextBrush}">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <SymbolIcon Symbol="Back" />
-                                    <TextBlock Text="&#x8FD4;&#x56DE;&#x8BBE;&#x7F6E;" />
-                                </StackPanel>
-                            </Button>
+                                Orientation="Horizontal"
+                                Spacing="10">
+                                <Button
+                                    MinHeight="36"
+                                    Padding="14,6"
+                                    Background="{StaticResource AppAccentBrush}"
+                                    Command="{Binding SaveNotificationRulesSettingsCommand}"
+                                    Foreground="#101418">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <SymbolIcon Symbol="Save" />
+                                        <TextBlock Text="{Binding NotificationRulesSaveButtonText}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button
+                                    MinHeight="36"
+                                    Padding="14,6"
+                                    Background="{StaticResource AppButtonBrush}"
+                                    Command="{Binding CloseNotificationRulesSettingsCommand}"
+                                    Foreground="{StaticResource AppTextBrush}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <SymbolIcon Symbol="Back" />
+                                        <TextBlock Text="&#x8FD4;&#x56DE;&#x8BBE;&#x7F6E;" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
                         </Grid>
 
                         <ScrollViewer

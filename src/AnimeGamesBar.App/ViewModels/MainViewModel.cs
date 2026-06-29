@@ -80,6 +80,8 @@ public sealed class MainViewModel : ObservableObject
     private DateOnly? _lastDailyAutoSignDate;
     private bool _settingsLoaded;
     private bool _isApplyingSettings;
+    private bool _notificationRulesDirty;
+    private IReadOnlyList<NotificationRuleSetting> _savedNotificationRuleSettings = Array.Empty<NotificationRuleSetting>();
 
     public MainViewModel(
         ICredentialStore credentialStore,
@@ -144,6 +146,7 @@ public sealed class MainViewModel : ObservableObject
             IsNotificationRulesPageOpen = false;
             return Task.CompletedTask;
         });
+        SaveNotificationRulesSettingsCommand = new AsyncCommand(SaveNotificationRulesSettingsAsync);
         SelectArknightsCommand = new AsyncCommand(_ =>
         {
             IsSettingsPageOpen = false;
@@ -219,6 +222,8 @@ public sealed class MainViewModel : ObservableObject
     public AsyncCommand OpenNotificationRulesSettingsCommand { get; }
 
     public AsyncCommand CloseNotificationRulesSettingsCommand { get; }
+
+    public AsyncCommand SaveNotificationRulesSettingsCommand { get; }
 
     public string Cred
     {
@@ -365,6 +370,22 @@ public sealed class MainViewModel : ObservableObject
     public Visibility NotificationRulesSettingsVisibility => IsSettingsPageOpen && IsNotificationRulesPageOpen
         ? Visibility.Visible
         : Visibility.Collapsed;
+
+    public bool NotificationRulesDirty
+    {
+        get => _notificationRulesDirty;
+        private set
+        {
+            if (SetProperty(ref _notificationRulesDirty, value))
+            {
+                OnPropertyChanged(nameof(NotificationRulesSaveButtonText));
+            }
+        }
+    }
+
+    public string NotificationRulesSaveButtonText => NotificationRulesDirty
+        ? "\u4FDD\u5B58\u66F4\u6539"
+        : "\u5DF2\u4FDD\u5B58";
 
     public bool UseDarkTheme
     {
@@ -886,11 +907,11 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    private async Task SaveSettingsAsync()
+    private async Task<bool> SaveSettingsAsync(IReadOnlyList<NotificationRuleSetting>? notificationRules = null)
     {
         if (!_settingsLoaded || _isApplyingSettings)
         {
-            return;
+            return false;
         }
 
         try
@@ -913,12 +934,14 @@ public sealed class MainViewModel : ObservableObject
                     DailyAutoSignEnabled,
                     ServerChanEnabled,
                     ServerChanSendKey,
-                    NotificationRules.Select(rule => rule.ToSetting()).ToArray()),
+                    notificationRules ?? _savedNotificationRuleSettings),
                 CancellationToken.None);
+            return true;
         }
         catch (Exception ex)
         {
             SetStatus($"\u8BBE\u7F6E\u4FDD\u5B58\u5931\u8D25\uFF1A{ex.Message}", InfoBarSeverity.Warning);
+            return false;
         }
     }
 
@@ -1711,6 +1734,9 @@ public sealed class MainViewModel : ObservableObject
             rule.PropertyChanged += NotificationRule_OnPropertyChanged;
             NotificationRules.Add(rule);
         }
+
+        _savedNotificationRuleSettings = NotificationRules.Select(rule => rule.ToSetting()).ToArray();
+        NotificationRulesDirty = false;
     }
 
     private void NotificationRule_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -1720,7 +1746,21 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
-        _ = SaveSettingsAsync();
+        NotificationRulesDirty = true;
+    }
+
+    private async Task SaveNotificationRulesSettingsAsync(CancellationToken cancellationToken)
+    {
+        var settings = NotificationRules.Select(rule => rule.ToSetting()).ToArray();
+        var saved = await SaveSettingsAsync(settings);
+        if (!saved)
+        {
+            return;
+        }
+
+        _savedNotificationRuleSettings = settings;
+        NotificationRulesDirty = false;
+        SetStatus("\u63D0\u9192\u89C4\u5219\u5DF2\u4FDD\u5B58\u3002", InfoBarSeverity.Success);
     }
 
     private async Task EvaluateNotificationRulesAsync(CancellationToken cancellationToken)
