@@ -8,6 +8,7 @@ public sealed class NotificationRuleViewModel : ObservableObject
     private const string DailyCategory = "\u65E5\u5E38";
     private const string WeeklyCategory = "\u5468\u5E38";
     private const string PeriodCategory = "\u5468\u671F";
+    private const string CompletionCategory = "\u5B8C\u6210\u65F6\u95F4";
     private const string GreaterThanOrEqual = "\u2265";
     private const string LessThanOrEqual = "\u2264";
     private const string Monday = "\u5468\u4E00";
@@ -49,7 +50,13 @@ public sealed class NotificationRuleViewModel : ObservableObject
         _requireThresholdForWeekly = setting?.RequireThresholdForWeekly ?? true;
     }
 
-    public static IReadOnlyList<string> CategoryOptions { get; } = new[] { DailyCategory, WeeklyCategory, PeriodCategory };
+    public static IReadOnlyList<string> CategoryOptions { get; } = new[]
+    {
+        DailyCategory,
+        WeeklyCategory,
+        PeriodCategory,
+        CompletionCategory
+    };
 
     public static IReadOnlyList<string> OperatorOptions { get; } = new[] { GreaterThanOrEqual, ">", LessThanOrEqual, "<" };
 
@@ -84,6 +91,8 @@ public sealed class NotificationRuleViewModel : ObservableObject
 
     public Visibility PeriodRuleVisibility => Category == PeriodCategory ? Visibility.Visible : Visibility.Collapsed;
 
+    public Visibility CompletionRuleVisibility => Category == CompletionCategory ? Visibility.Visible : Visibility.Collapsed;
+
     public Visibility WeeklyThresholdVisibility => RequireThresholdForWeekly ? Visibility.Visible : Visibility.Collapsed;
 
     public bool Enabled
@@ -102,6 +111,7 @@ public sealed class NotificationRuleViewModel : ObservableObject
                 OnPropertyChanged(nameof(DailyRuleVisibility));
                 OnPropertyChanged(nameof(WeeklyRuleVisibility));
                 OnPropertyChanged(nameof(PeriodRuleVisibility));
+                OnPropertyChanged(nameof(CompletionRuleVisibility));
             }
         }
     }

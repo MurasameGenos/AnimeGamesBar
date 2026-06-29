@@ -2131,6 +2131,7 @@ public sealed class MainViewModel : ObservableObject
             "日常" => TryCreateDailyNotificationKey(rule, metric, now),
             "周常" => TryCreateWeeklyNotificationKey(rule, metric, now),
             "周期" => TryCreatePeriodicNotificationKey(rule, metric, now),
+            "完成时间" => TryCreateCompletionNotificationKey(rule, metric, now),
             _ => null
         };
     }
@@ -2198,6 +2199,26 @@ public sealed class MainViewModel : ObservableObject
         return $"period:{rule.Id}:{metric.PeriodAt.Value:yyyyMMddHHmm}:{rule.DaysBefore:0}:{rule.RequireThresholdForPeriod}";
     }
 
+    private static string? TryCreateCompletionNotificationKey(
+        NotificationRuleViewModel rule,
+        NotificationMetricState metric,
+        DateTimeOffset now)
+    {
+        if (metric.PeriodAt is null)
+        {
+            return null;
+        }
+
+        var local = now.LocalDateTime;
+        var target = metric.PeriodAt.Value.LocalDateTime;
+        if (local < target || local >= target.AddMinutes(2))
+        {
+            return null;
+        }
+
+        return $"completion:{rule.Id}:{metric.PeriodAt.Value:yyyyMMddHHmm}";
+    }
+
     private static string BuildRuleNotificationMessage(
         NotificationRuleViewModel rule,
         NotificationMetricState metric,
@@ -2214,6 +2235,11 @@ public sealed class MainViewModel : ObservableObject
             return rule.RequireThresholdForPeriod
                 ? $"{periodText}\n当前值 {valueText}，规则：{rule.Operator}{rule.Threshold:0}"
                 : periodText;
+        }
+
+        if (rule.Category == "完成时间" && metric.PeriodAt is not null)
+        {
+            return $"{metric.PeriodLabel} {FormatClockWithDay(metric.PeriodAt.Value)}\n当前状态：{metric.MetricTitle}";
         }
 
         var timeText = rule.Category == "日常" && !rule.UseScheduledTime
@@ -2238,6 +2264,7 @@ public sealed class MainViewModel : ObservableObject
         {
             yield return Metric("arknights.sanity", "明日方舟", "理智", _arknightsSnapshot.Sanity.Current, _arknightsSnapshot.Sanity.Maximum, _arknightsSnapshot.Sanity.FullAt, "回满");
             yield return Metric("arknights.drones", "明日方舟", "无人机", _arknightsSnapshot.Drones.Current, _arknightsSnapshot.Drones.Maximum, _arknightsSnapshot.Drones.FullAt, "回满");
+            yield return Metric("arknights.training", "明日方舟", "训练室", 0, 0, _arknightsSnapshot.TrainingRoom.CompleteAt, "完成");
             yield return Metric("arknights.orders", "明日方舟", "订单进度", _arknightsSnapshot.Building.Orders.Current, _arknightsSnapshot.Building.Orders.Maximum, _arknightsSnapshot.Building.Orders.CompleteAt, "下一单");
             yield return Metric("arknights.manufacture", "明日方舟", "制造进度", _arknightsSnapshot.Building.Manufacture.Current, _arknightsSnapshot.Building.Manufacture.Maximum, _arknightsSnapshot.Building.Manufacture.CompleteAt, "下一件");
             yield return Metric("arknights.tired", "明日方舟", "干员疲劳", _arknightsSnapshot.Building.TiredOperators, 0, null, "刷新");
@@ -2339,6 +2366,7 @@ public sealed class MainViewModel : ObservableObject
     {
         new NotificationMetricDefinition("arknights.sanity", "明日方舟", "理智", "日常"),
         new NotificationMetricDefinition("arknights.drones", "明日方舟", "无人机", "日常"),
+        new NotificationMetricDefinition("arknights.training", "明日方舟", "训练室", "完成时间"),
         new NotificationMetricDefinition("arknights.orders", "明日方舟", "订单进度", "日常"),
         new NotificationMetricDefinition("arknights.manufacture", "明日方舟", "制造进度", "日常"),
         new NotificationMetricDefinition("arknights.tired", "明日方舟", "干员疲劳", "日常"),

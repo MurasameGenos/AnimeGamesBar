@@ -1363,6 +1363,17 @@
                                                         SpinButtonPlacementMode="Compact"
                                                         Value="{Binding Threshold, Mode=TwoWay}" />
                                                 </StackPanel>
+
+                                                <StackPanel
+                                                    Grid.Column="3"
+                                                    Orientation="Horizontal"
+                                                    Spacing="10"
+                                                    Visibility="{Binding CompletionRuleVisibility}">
+                                                    <TextBlock
+                                                        VerticalAlignment="Center"
+                                                        Foreground="{StaticResource AppMutedTextBrush}"
+                                                        Text="&#x5230;&#x5B8C;&#x6210;&#x65F6;&#x95F4;&#x65F6;&#x63D0;&#x9192;" />
+                                                </StackPanel>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
