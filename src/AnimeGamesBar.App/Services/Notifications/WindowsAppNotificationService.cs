@@ -37,7 +37,7 @@ public sealed class WindowsAppNotificationService : IAppNotificationService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (_initialized)
+        if (_options.WindowsEnabled && _initialized)
         {
             try
             {

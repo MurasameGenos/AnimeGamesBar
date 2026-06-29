@@ -1,3 +1,4 @@
+using AnimeGamesBar.App.Services.Notifications;
 using Microsoft.UI.Xaml;
 
 namespace AnimeGamesBar.App.Services.Settings;
@@ -18,7 +19,8 @@ public sealed record AppSettings(
     bool ManualSignInAllGames = false,
     bool DailyAutoSignEnabled = true,
     bool ServerChanEnabled = false,
-    string ServerChanSendKey = "")
+    string ServerChanSendKey = "",
+    IReadOnlyList<NotificationRuleSetting>? NotificationRules = null)
 {
     public static AppSettings Default { get; } = new(
         UseDarkTheme: true,

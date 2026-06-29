@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using AnimeGamesBar.App.Models;
 using AnimeGamesBar.App.Services.Kuro;
 using AnimeGamesBar.App.Services.Notifications;
@@ -30,6 +31,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly ISettingsStore _settingsStore;
     private readonly IAppNotificationService _notificationService;
     private readonly IStartupService _startupService;
+    private readonly HashSet<string> _sentNotificationKeys = new(StringComparer.Ordinal);
     private readonly List<ArknightsPlayerBinding> _arknightsBindings = new();
     private readonly List<ArknightsPlayerBinding> _endfieldBindings = new();
     private readonly List<ArknightsPlayerBinding> _wutheringWavesBindings = new();
@@ -115,6 +117,7 @@ public sealed class MainViewModel : ObservableObject
         RefreshYihuanCommand = new AsyncCommand(cancellationToken => RefreshAutoGameAsync(GameDashboardKind.Yihuan, cancellationToken));
         SignInCommand = new AsyncCommand(SignInManualAsync);
         ScheduledSignInCommand = new AsyncCommand(cancellationToken => SignInAllAsync(cancellationToken, showNotification: NotificationsEnabled));
+        EvaluateNotificationRulesCommand = new AsyncCommand(EvaluateNotificationRulesAsync);
         SaveCredentialCommand = new AsyncCommand(SaveCredentialAsync);
         ClearCredentialCommand = new AsyncCommand(ClearCredentialAsync);
         StartLoginCommand = new AsyncCommand(StartLoginAsync);
@@ -158,6 +161,8 @@ public sealed class MainViewModel : ObservableObject
 
     public ObservableCollection<ArknightsPlayerBinding> PlayerBindings { get; } = new();
 
+    public ObservableCollection<NotificationRuleViewModel> NotificationRules { get; } = new();
+
     public Window? OwnerWindow { get; set; }
 
     public event EventHandler? CredentialApplied;
@@ -177,6 +182,8 @@ public sealed class MainViewModel : ObservableObject
     public AsyncCommand SignInCommand { get; }
 
     public AsyncCommand ScheduledSignInCommand { get; }
+
+    public AsyncCommand EvaluateNotificationRulesCommand { get; }
 
     public AsyncCommand SaveCredentialCommand { get; }
 
@@ -385,6 +392,7 @@ public sealed class MainViewModel : ObservableObject
         {
             if (SetProperty(ref _notificationsEnabled, value))
             {
+                ConfigureNotificationChannels();
                 _ = SaveSettingsAsync();
             }
         }
@@ -807,6 +815,7 @@ public sealed class MainViewModel : ObservableObject
             NotificationsEnabled = settings.NotificationsEnabled;
             ServerChanEnabled = settings.ServerChanEnabled;
             ServerChanSendKey = settings.ServerChanSendKey;
+            InitializeNotificationRules(settings.NotificationRules);
             StartWithWindows = settings.StartWithWindows || _startupService.IsEnabled();
             _arknightsAutoRefreshEnabled = settings.ArknightsAutoRefreshEnabled;
             _endfieldAutoRefreshEnabled = settings.EndfieldAutoRefreshEnabled;
@@ -863,7 +872,8 @@ public sealed class MainViewModel : ObservableObject
                     ManualSignInAllGames,
                     DailyAutoSignEnabled,
                     ServerChanEnabled,
-                    ServerChanSendKey),
+                    ServerChanSendKey,
+                    NotificationRules.Select(rule => rule.ToSetting()).ToArray()),
                 CancellationToken.None);
         }
         catch (Exception ex)
@@ -1206,6 +1216,7 @@ public sealed class MainViewModel : ObservableObject
             SetStatus($"\u5DF2\u5237\u65B0{GameTitle(game)}\uFF1A{updatedAt:HH:mm:ss}", InfoBarSeverity.Success);
         }
 
+        await EvaluateNotificationRulesAsync(cancellationToken);
         return true;
     }
 
@@ -1630,9 +1641,318 @@ public sealed class MainViewModel : ObservableObject
     private void ConfigureNotificationChannels()
     {
         _notificationService.Configure(new AppNotificationOptions(
+            NotificationsEnabled,
             ServerChanEnabled,
             ServerChanSendKey));
     }
+
+    private void InitializeNotificationRules(IReadOnlyList<NotificationRuleSetting>? settings)
+    {
+        foreach (var rule in NotificationRules)
+        {
+            rule.PropertyChanged -= NotificationRule_OnPropertyChanged;
+        }
+
+        NotificationRules.Clear();
+        var settingsByMetric = (settings ?? Array.Empty<NotificationRuleSetting>())
+            .GroupBy(setting => string.IsNullOrWhiteSpace(setting.MetricId) ? setting.Id : setting.MetricId)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+
+        foreach (var metric in NotificationMetricDefinitions)
+        {
+            settingsByMetric.TryGetValue(metric.Id, out var setting);
+            var rule = new NotificationRuleViewModel(
+                metric.Id,
+                metric.GameTitle,
+                metric.MetricTitle,
+                metric.Id,
+                metric.DefaultCategory,
+                setting);
+            rule.PropertyChanged += NotificationRule_OnPropertyChanged;
+            NotificationRules.Add(rule);
+        }
+    }
+
+    private void NotificationRule_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_isApplyingSettings)
+        {
+            return;
+        }
+
+        _ = SaveSettingsAsync();
+    }
+
+    private async Task EvaluateNotificationRulesAsync(CancellationToken cancellationToken)
+    {
+        if (NotificationRules.Count == 0)
+        {
+            return;
+        }
+
+        var metrics = BuildNotificationMetricStates()
+            .ToDictionary(metric => metric.Id, StringComparer.Ordinal);
+        if (metrics.Count == 0)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.Now;
+        foreach (var rule in NotificationRules)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!rule.Enabled || !metrics.TryGetValue(rule.MetricId, out var metric))
+            {
+                continue;
+            }
+
+            var notificationKey = TryCreateNotificationKey(rule, metric, now);
+            if (notificationKey is null || !_sentNotificationKeys.Add(notificationKey))
+            {
+                continue;
+            }
+
+            var message = BuildRuleNotificationMessage(rule, metric, now);
+            await _notificationService.ShowAsync(
+                $"{metric.GameTitle}提醒：{metric.MetricTitle}",
+                message,
+                cancellationToken);
+        }
+    }
+
+    private static string? TryCreateNotificationKey(
+        NotificationRuleViewModel rule,
+        NotificationMetricState metric,
+        DateTimeOffset now)
+    {
+        return rule.Category switch
+        {
+            "日常" => TryCreateDailyNotificationKey(rule, metric, now),
+            "周常" => TryCreateWeeklyNotificationKey(rule, metric, now),
+            "周期" => TryCreatePeriodicNotificationKey(rule, metric, now),
+            _ => null
+        };
+    }
+
+    private static string? TryCreateDailyNotificationKey(
+        NotificationRuleViewModel rule,
+        NotificationMetricState metric,
+        DateTimeOffset now)
+    {
+        if (!Compare(metric.Current, rule.Operator, rule.Threshold))
+        {
+            return null;
+        }
+
+        var date = DateOnly.FromDateTime(now.LocalDateTime);
+        if (rule.UseScheduledTime && !IsTimeWindow(now, (int)rule.Hour, (int)rule.Minute, TimeSpan.FromMinutes(2)))
+        {
+            return null;
+        }
+
+        var mode = rule.UseScheduledTime ? $"{rule.Hour:00}:{rule.Minute:00}" : "threshold";
+        return $"daily:{rule.Id}:{date:yyyyMMdd}:{mode}";
+    }
+
+    private static string? TryCreateWeeklyNotificationKey(
+        NotificationRuleViewModel rule,
+        NotificationMetricState metric,
+        DateTimeOffset now)
+    {
+        if (ToDayOfWeek(rule.Weekday) != now.DayOfWeek ||
+            !IsTimeWindow(now, (int)rule.Hour, (int)rule.Minute, TimeSpan.FromMinutes(2)) ||
+            !Compare(metric.Current, rule.Operator, rule.Threshold))
+        {
+            return null;
+        }
+
+        return $"weekly:{rule.Id}:{now.LocalDateTime:yyyyMMdd}:{rule.Hour:00}:{rule.Minute:00}";
+    }
+
+    private static string? TryCreatePeriodicNotificationKey(
+        NotificationRuleViewModel rule,
+        NotificationMetricState metric,
+        DateTimeOffset now)
+    {
+        if (metric.PeriodAt is null)
+        {
+            return null;
+        }
+
+        if (rule.RequireThresholdForPeriod && !Compare(metric.Current, rule.Operator, rule.Threshold))
+        {
+            return null;
+        }
+
+        var target = metric.PeriodAt.Value.AddDays(-(int)rule.DaysBefore);
+        if (now < target || now > metric.PeriodAt.Value)
+        {
+            return null;
+        }
+
+        return $"period:{rule.Id}:{metric.PeriodAt.Value:yyyyMMddHHmm}:{rule.DaysBefore:0}:{rule.RequireThresholdForPeriod}";
+    }
+
+    private static string BuildRuleNotificationMessage(
+        NotificationRuleViewModel rule,
+        NotificationMetricState metric,
+        DateTimeOffset now)
+    {
+        var valueText = metric.Maximum > 0
+            ? $"{metric.Current}/{metric.Maximum}"
+            : $"{metric.Current}";
+
+        if (rule.Category == "周期" && metric.PeriodAt is not null)
+        {
+            var remaining = metric.PeriodAt.Value - now;
+            var periodText = $"{metric.PeriodLabel} {FormatClockWithDay(metric.PeriodAt.Value)} · 还需 {FormatDuration(remaining)}";
+            return rule.RequireThresholdForPeriod
+                ? $"{periodText}\n当前值 {valueText}，规则：{rule.Operator}{rule.Threshold:0}"
+                : periodText;
+        }
+
+        var timeText = rule.Category == "日常" && !rule.UseScheduledTime
+            ? "当前"
+            : $"{rule.Weekday} {rule.Hour:00}:{rule.Minute:00}";
+        if (rule.Category == "日常" && rule.UseScheduledTime)
+        {
+            timeText = $"{rule.Hour:00}:{rule.Minute:00}";
+        }
+
+        return $"{timeText} 检查命中\n当前值 {valueText}，规则：{rule.Operator}{rule.Threshold:0}";
+    }
+
+    private IEnumerable<NotificationMetricState> BuildNotificationMetricStates()
+    {
+        if (_arknightsSnapshot is not null)
+        {
+            yield return Metric("arknights.sanity", "明日方舟", "理智", _arknightsSnapshot.Sanity.Current, _arknightsSnapshot.Sanity.Maximum, _arknightsSnapshot.Sanity.FullAt, "回满");
+            yield return Metric("arknights.drones", "明日方舟", "无人机", _arknightsSnapshot.Drones.Current, _arknightsSnapshot.Drones.Maximum, _arknightsSnapshot.Drones.FullAt, "回满");
+            yield return Metric("arknights.orders", "明日方舟", "订单进度", _arknightsSnapshot.Building.Orders.Current, _arknightsSnapshot.Building.Orders.Maximum, _arknightsSnapshot.Building.Orders.CompleteAt, "下一单");
+            yield return Metric("arknights.manufacture", "明日方舟", "制造进度", _arknightsSnapshot.Building.Manufacture.Current, _arknightsSnapshot.Building.Manufacture.Maximum, _arknightsSnapshot.Building.Manufacture.CompleteAt, "下一件");
+            yield return Metric("arknights.tired", "明日方舟", "干员疲劳", _arknightsSnapshot.Building.TiredOperators, 0, null, "刷新");
+            yield return Metric("arknights.annihilation", "明日方舟", "每周剿灭", _arknightsSnapshot.Annihilation.Current, _arknightsSnapshot.Annihilation.Maximum, _arknightsSnapshot.Annihilation.RefreshAt, "刷新");
+            yield return Metric("arknights.security", "明日方舟", "保全派驻数据增补仪", _arknightsSnapshot.SecurityService.Current, _arknightsSnapshot.SecurityService.Maximum, _arknightsSnapshot.SecurityService.RefreshAt, "刷新");
+            yield return Metric("arknights.securityStrips", "明日方舟", "保全派驻数据增补条", _arknightsSnapshot.SecurityServiceStrips.Current, _arknightsSnapshot.SecurityServiceStrips.Maximum, _arknightsSnapshot.SecurityServiceStrips.RefreshAt, "刷新");
+        }
+
+        if (_endfieldSnapshot is not null)
+        {
+            yield return Metric("endfield.sanity", "终末地", "理智", _endfieldSnapshot.Sanity.Current, _endfieldSnapshot.Sanity.Maximum, _endfieldSnapshot.Sanity.FullAt, "回满");
+            yield return Metric("endfield.dailyActivity", "终末地", "每日活跃度", _endfieldSnapshot.DailyActivity.Current, _endfieldSnapshot.DailyActivity.Maximum, null, "刷新");
+            yield return Metric("endfield.weeklyTasks", "终末地", "每周事务", _endfieldSnapshot.WeeklyTasks.Current, _endfieldSnapshot.WeeklyTasks.Maximum, null, "刷新");
+            yield return Metric("endfield.passLevel", "终末地", "通行证等级", _endfieldSnapshot.PassLevel.Current, _endfieldSnapshot.PassLevel.Maximum, null, "结束");
+        }
+
+        if (_wutheringWavesSnapshot is not null)
+        {
+            yield return Metric("wuwa.waveplates", "鸣潮", "结晶波片", _wutheringWavesSnapshot.Waveplates.Current, _wutheringWavesSnapshot.Waveplates.Maximum, _wutheringWavesSnapshot.Waveplates.RefreshAt, "回满");
+            yield return Metric("wuwa.crystalSolvent", "鸣潮", "结晶单质", _wutheringWavesSnapshot.CrystalSolvent.Current, _wutheringWavesSnapshot.CrystalSolvent.Maximum, null, "刷新");
+            yield return Metric("wuwa.dailyActivity", "鸣潮", "每日活跃度", _wutheringWavesSnapshot.DailyActivity.Current, _wutheringWavesSnapshot.DailyActivity.Maximum, null, "刷新");
+            yield return Metric("wuwa.weeklyVoyage", "鸣潮", "周度游历", _wutheringWavesSnapshot.WeeklyVoyage.Current, _wutheringWavesSnapshot.WeeklyVoyage.Maximum, _wutheringWavesSnapshot.WeeklyVoyage.RefreshAt, "刷新");
+            yield return Metric("wuwa.weeklyBoss", "鸣潮", "战歌重奏剩余收取次数", _wutheringWavesSnapshot.WeeklyBoss.Current, _wutheringWavesSnapshot.WeeklyBoss.Maximum, _wutheringWavesSnapshot.WeeklyBoss.RefreshAt, "刷新");
+            yield return Metric("wuwa.battlePass", "鸣潮", "先约电台等级", _wutheringWavesSnapshot.BattlePassLevel.Current, _wutheringWavesSnapshot.BattlePassLevel.Maximum, _wutheringWavesSnapshot.BattlePassLevel.ExpireAt, "结束");
+            yield return Metric("wuwa.tower", "鸣潮", "逆境深塔", 0, 0, _wutheringWavesSnapshot.TowerResetAt, "刷新");
+            yield return Metric("wuwa.sea", "鸣潮", "冥歌海墟", 0, 0, _wutheringWavesSnapshot.SeaResetAt, "刷新");
+            yield return Metric("wuwa.finalMatrix", "鸣潮", "终焉矩阵", 0, 0, _wutheringWavesSnapshot.FinalBattleEndAt, "结束");
+        }
+
+        if (_yihuanSnapshot is not null)
+        {
+            yield return Metric("yihuan.naturePixels", "异环", "本性像素", _yihuanSnapshot.NaturePixels.Current, _yihuanSnapshot.NaturePixels.Maximum, _yihuanSnapshot.NaturePixels.FullAt, "回满");
+            yield return Metric("yihuan.cityVitality", "异环", "都市活力", _yihuanSnapshot.CityVitality.Current, _yihuanSnapshot.CityVitality.Maximum, _yihuanSnapshot.CityVitality.FullAt, "回满");
+            yield return Metric("yihuan.dailyActivity", "异环", "活跃度", _yihuanSnapshot.DailyActivity.Current, _yihuanSnapshot.DailyActivity.Maximum, null, "刷新");
+            yield return Metric("yihuan.weeklyBoss", "异环", "周本次数", _yihuanSnapshot.WeeklyBoss.Current, _yihuanSnapshot.WeeklyBoss.Maximum, null, "刷新");
+        }
+    }
+
+    private static NotificationMetricState Metric(
+        string id,
+        string gameTitle,
+        string metricTitle,
+        int current,
+        int maximum,
+        DateTimeOffset? periodAt,
+        string periodLabel)
+    {
+        return new NotificationMetricState(id, gameTitle, metricTitle, current, maximum, periodAt, periodLabel);
+    }
+
+    private static bool Compare(int value, string comparisonOperator, double threshold)
+    {
+        return comparisonOperator switch
+        {
+            ">" => value > threshold,
+            "≤" => value <= threshold,
+            "<" => value < threshold,
+            _ => value >= threshold
+        };
+    }
+
+    private static bool IsTimeWindow(DateTimeOffset now, int hour, int minute, TimeSpan tolerance)
+    {
+        var local = now.LocalDateTime;
+        var target = local.Date.AddHours(hour).AddMinutes(minute);
+        return local >= target && local < target.Add(tolerance);
+    }
+
+    private static DayOfWeek ToDayOfWeek(string weekday)
+    {
+        return weekday switch
+        {
+            "周二" => DayOfWeek.Tuesday,
+            "周三" => DayOfWeek.Wednesday,
+            "周四" => DayOfWeek.Thursday,
+            "周五" => DayOfWeek.Friday,
+            "周六" => DayOfWeek.Saturday,
+            "周日" => DayOfWeek.Sunday,
+            _ => DayOfWeek.Monday
+        };
+    }
+
+    private sealed record NotificationMetricState(
+        string Id,
+        string GameTitle,
+        string MetricTitle,
+        int Current,
+        int Maximum,
+        DateTimeOffset? PeriodAt,
+        string PeriodLabel);
+
+    private sealed record NotificationMetricDefinition(
+        string Id,
+        string GameTitle,
+        string MetricTitle,
+        string DefaultCategory);
+
+    private static IReadOnlyList<NotificationMetricDefinition> NotificationMetricDefinitions { get; } = new[]
+    {
+        new NotificationMetricDefinition("arknights.sanity", "明日方舟", "理智", "日常"),
+        new NotificationMetricDefinition("arknights.drones", "明日方舟", "无人机", "日常"),
+        new NotificationMetricDefinition("arknights.orders", "明日方舟", "订单进度", "日常"),
+        new NotificationMetricDefinition("arknights.manufacture", "明日方舟", "制造进度", "日常"),
+        new NotificationMetricDefinition("arknights.tired", "明日方舟", "干员疲劳", "日常"),
+        new NotificationMetricDefinition("arknights.annihilation", "明日方舟", "每周剿灭", "周常"),
+        new NotificationMetricDefinition("arknights.security", "明日方舟", "保全派驻数据增补仪", "周期"),
+        new NotificationMetricDefinition("arknights.securityStrips", "明日方舟", "保全派驻数据增补条", "周期"),
+        new NotificationMetricDefinition("endfield.sanity", "终末地", "理智", "日常"),
+        new NotificationMetricDefinition("endfield.dailyActivity", "终末地", "每日活跃度", "日常"),
+        new NotificationMetricDefinition("endfield.weeklyTasks", "终末地", "每周事务", "周常"),
+        new NotificationMetricDefinition("endfield.passLevel", "终末地", "通行证等级", "周常"),
+        new NotificationMetricDefinition("wuwa.waveplates", "鸣潮", "结晶波片", "日常"),
+        new NotificationMetricDefinition("wuwa.crystalSolvent", "鸣潮", "结晶单质", "日常"),
+        new NotificationMetricDefinition("wuwa.dailyActivity", "鸣潮", "每日活跃度", "日常"),
+        new NotificationMetricDefinition("wuwa.weeklyVoyage", "鸣潮", "周度游历", "周常"),
+        new NotificationMetricDefinition("wuwa.weeklyBoss", "鸣潮", "战歌重奏剩余收取次数", "周常"),
+        new NotificationMetricDefinition("wuwa.battlePass", "鸣潮", "先约电台等级", "周常"),
+        new NotificationMetricDefinition("wuwa.tower", "鸣潮", "逆境深塔", "周期"),
+        new NotificationMetricDefinition("wuwa.sea", "鸣潮", "冥歌海墟", "周期"),
+        new NotificationMetricDefinition("wuwa.finalMatrix", "鸣潮", "终焉矩阵", "周期"),
+        new NotificationMetricDefinition("yihuan.naturePixels", "异环", "本性像素", "日常"),
+        new NotificationMetricDefinition("yihuan.cityVitality", "异环", "都市活力", "日常"),
+        new NotificationMetricDefinition("yihuan.dailyActivity", "异环", "活跃度", "日常"),
+        new NotificationMetricDefinition("yihuan.weeklyBoss", "异环", "周本次数", "周常")
+    };
 
     private static string BuildSignInSummary(IReadOnlyList<SklandSignInResult> results)
     {

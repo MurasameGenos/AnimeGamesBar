@@ -10,5 +10,6 @@ public interface IAppNotificationService
 }
 
 public sealed record AppNotificationOptions(
+    bool WindowsEnabled = true,
     bool ServerChanEnabled = false,
     string ServerChanSendKey = "");

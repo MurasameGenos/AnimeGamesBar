@@ -1013,6 +1013,127 @@
                                 Text="{Binding ServerChanSendKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </Border>
                     </Grid>
+
+                    <ScrollViewer
+                        Grid.Row="2"
+                        VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="12">
+                            <TextBlock
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource AppTextBrush}"
+                                Text="&#x63D0;&#x9192;&#x89C4;&#x5219;" />
+                            <ItemsControl ItemsSource="{Binding NotificationRules}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border
+                                            Margin="0,0,0,10"
+                                            Background="{StaticResource CardSurfaceBrush}"
+                                            BorderBrush="{StaticResource AppBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="12">
+                                            <Grid ColumnSpacing="10" RowSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="86" />
+                                                    <ColumnDefinition Width="150" />
+                                                    <ColumnDefinition Width="170" />
+                                                    <ColumnDefinition Width="112" />
+                                                    <ColumnDefinition Width="86" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="122" />
+                                                    <ColumnDefinition Width="86" />
+                                                    <ColumnDefinition Width="86" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="128" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+
+                                                <ToggleSwitch
+                                                    Grid.RowSpan="2"
+                                                    Grid.Column="0"
+                                                    Header="&#x542F;&#x7528;"
+                                                    IsOn="{Binding Enabled, Mode=TwoWay}" />
+
+                                                <StackPanel Grid.Column="1" Grid.RowSpan="2" Spacing="2">
+                                                    <TextBlock
+                                                        FontWeight="SemiBold"
+                                                        Foreground="{StaticResource AppTextBrush}"
+                                                        Text="{Binding GameTitle}" />
+                                                    <TextBlock
+                                                        Style="{StaticResource MutedTextStyle}"
+                                                        Text="{Binding MetricTitle}"
+                                                        TextWrapping="WrapWholeWords" />
+                                                </StackPanel>
+
+                                                <ComboBox
+                                                    Grid.Column="2"
+                                                    Header="&#x7C7B;&#x578B;"
+                                                    ItemsSource="{Binding CategoryItems}"
+                                                    SelectedItem="{Binding Category, Mode=TwoWay}" />
+
+                                                <ComboBox
+                                                    Grid.Column="3"
+                                                    Header="&#x6BD4;&#x8F83;"
+                                                    ItemsSource="{Binding OperatorItems}"
+                                                    SelectedItem="{Binding Operator, Mode=TwoWay}" />
+
+                                                <NumberBox
+                                                    Grid.Column="4"
+                                                    Header="&#x9608;&#x503C;"
+                                                    Minimum="0"
+                                                    SpinButtonPlacementMode="Compact"
+                                                    Value="{Binding Threshold, Mode=TwoWay}" />
+
+                                                <ToggleSwitch
+                                                    Grid.Column="5"
+                                                    Header="&#x5B9A;&#x65F6;"
+                                                    IsOn="{Binding UseScheduledTime, Mode=TwoWay}" />
+
+                                                <ComboBox
+                                                    Grid.Column="6"
+                                                    Header="&#x5468;&#x5E38;&#x65E5;"
+                                                    ItemsSource="{Binding WeekdayItems}"
+                                                    SelectedItem="{Binding Weekday, Mode=TwoWay}" />
+
+                                                <NumberBox
+                                                    Grid.Column="7"
+                                                    Header="&#x65F6;"
+                                                    Maximum="23"
+                                                    Minimum="0"
+                                                    SpinButtonPlacementMode="Compact"
+                                                    Value="{Binding Hour, Mode=TwoWay}" />
+
+                                                <NumberBox
+                                                    Grid.Column="8"
+                                                    Header="&#x5206;"
+                                                    Maximum="59"
+                                                    Minimum="0"
+                                                    SpinButtonPlacementMode="Compact"
+                                                    Value="{Binding Minute, Mode=TwoWay}" />
+
+                                                <NumberBox
+                                                    Grid.Column="9"
+                                                    Header="&#x63D0;&#x524D;&#x5929;"
+                                                    Maximum="30"
+                                                    Minimum="0"
+                                                    SpinButtonPlacementMode="Compact"
+                                                    Value="{Binding DaysBefore, Mode=TwoWay}" />
+
+                                                <ToggleSwitch
+                                                    Grid.Column="10"
+                                                    Header="&#x5468;&#x671F;&#x770B;&#x9608;&#x503C;"
+                                                    IsOn="{Binding RequireThresholdForPeriod, Mode=TwoWay}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
                 </Grid>
             </Border>
         </Grid>

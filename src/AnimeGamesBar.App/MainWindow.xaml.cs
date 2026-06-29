@@ -16,6 +16,7 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _wutheringWavesAutoRefreshTimer = new();
     private readonly DispatcherTimer _yihuanAutoRefreshTimer = new();
     private readonly DispatcherTimer _autoSignTimer = new();
+    private readonly DispatcherTimer _notificationRuleTimer = new();
 
     public MainWindow(MainViewModel viewModel)
     {
@@ -29,12 +30,14 @@ public sealed partial class MainWindow : Window
         _wutheringWavesAutoRefreshTimer.Tick += WutheringWavesAutoRefreshTimer_OnTick;
         _yihuanAutoRefreshTimer.Tick += YihuanAutoRefreshTimer_OnTick;
         _autoSignTimer.Tick += AutoSignTimer_OnTick;
+        _notificationRuleTimer.Tick += NotificationRuleTimer_OnTick;
         Root.DataContext = ViewModel;
         Closed += MainWindow_OnClosed;
         SetDefaultSize();
         ApplyThemePalette();
         UpdateAutoRefreshTimer();
         UpdateAutoSignTimer();
+        UpdateNotificationRuleTimer();
     }
 
     public MainViewModel ViewModel { get; }
@@ -130,6 +133,14 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void NotificationRuleTimer_OnTick(object? sender, object e)
+    {
+        if (ViewModel.EvaluateNotificationRulesCommand.CanExecute(null))
+        {
+            ViewModel.EvaluateNotificationRulesCommand.Execute(null);
+        }
+    }
+
     private void UpdateAutoRefreshTimer()
     {
         ConfigureAutoRefreshTimer(_arknightsAutoRefreshTimer, ViewModel.ArknightsAutoRefreshIntervalMinutes, ViewModel.ArknightsAutoRefreshEnabled);
@@ -156,6 +167,13 @@ public sealed partial class MainWindow : Window
         {
             _autoSignTimer.Start();
         }
+    }
+
+    private void UpdateNotificationRuleTimer()
+    {
+        _notificationRuleTimer.Stop();
+        _notificationRuleTimer.Interval = TimeSpan.FromMinutes(1);
+        _notificationRuleTimer.Start();
     }
 
     private void SetDefaultSize()
@@ -225,6 +243,7 @@ public sealed partial class MainWindow : Window
         _wutheringWavesAutoRefreshTimer.Stop();
         _yihuanAutoRefreshTimer.Stop();
         _autoSignTimer.Stop();
+        _notificationRuleTimer.Stop();
         ViewModel.PropertyChanged -= ViewModel_OnPropertyChanged;
         ViewModel.CredentialApplied -= ViewModel_OnCredentialApplied;
         _arknightsAutoRefreshTimer.Tick -= ArknightsAutoRefreshTimer_OnTick;
@@ -232,5 +251,6 @@ public sealed partial class MainWindow : Window
         _wutheringWavesAutoRefreshTimer.Tick -= WutheringWavesAutoRefreshTimer_OnTick;
         _yihuanAutoRefreshTimer.Tick -= YihuanAutoRefreshTimer_OnTick;
         _autoSignTimer.Tick -= AutoSignTimer_OnTick;
+        _notificationRuleTimer.Tick -= NotificationRuleTimer_OnTick;
     }
 }
