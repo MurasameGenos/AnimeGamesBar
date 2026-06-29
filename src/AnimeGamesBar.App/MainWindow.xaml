@@ -153,10 +153,6 @@
                         </Button>
                     </Grid>
                 </Border>
-                <TextBlock
-                    VerticalAlignment="Center"
-                    Foreground="{StaticResource AppMutedTextBrush}"
-                    Text="{Binding AutoRefreshSummary}" />
             </StackPanel>
 
             <StackPanel
@@ -166,7 +162,7 @@
                 Spacing="8">
                 <Button
                     MinHeight="36"
-                    Padding="14,6"
+                    Padding="10,6"
                     Background="{StaticResource AppButtonBrush}"
                     Command="{Binding LaunchGameCommand}"
                     Foreground="{StaticResource AppTextBrush}">
@@ -177,7 +173,7 @@
                 </Button>
                 <Button
                     MinHeight="36"
-                    Padding="14,6"
+                    Padding="10,6"
                     Background="{StaticResource AppButtonBrush}"
                     Command="{Binding LaunchScriptCommand}"
                     Foreground="{StaticResource AppTextBrush}">
@@ -188,7 +184,7 @@
                 </Button>
                 <Button
                     MinHeight="36"
-                    Padding="14,6"
+                    Padding="10,6"
                     Background="{StaticResource AppAccentBrush}"
                     Command="{Binding RefreshCommand}"
                     Foreground="#101418">
@@ -199,7 +195,7 @@
                 </Button>
                 <Button
                     MinHeight="36"
-                    Padding="14,6"
+                    Padding="10,6"
                     Background="{StaticResource AppButtonBrush}"
                     Command="{Binding SignInCommand}"
                     Foreground="{StaticResource AppTextBrush}">
@@ -210,7 +206,7 @@
                 </Button>
                 <Button
                     MinHeight="36"
-                    Padding="14,6"
+                    Padding="10,6"
                     Background="{StaticResource AppButtonBrush}"
                     Command="{Binding SaveCredentialCommand}"
                     Foreground="{StaticResource AppTextBrush}">
@@ -221,7 +217,7 @@
                 </Button>
                 <Button
                     MinHeight="36"
-                    Padding="14,6"
+                    Padding="10,6"
                     Background="{StaticResource AppButtonBrush}"
                     Command="{Binding StartLoginCommand}"
                     Foreground="{StaticResource AppTextBrush}">
@@ -232,7 +228,7 @@
                 </Button>
                 <Button
                     MinHeight="36"
-                    Padding="14,6"
+                    Padding="10,6"
                     Background="{StaticResource AppButtonBrush}"
                     Command="{Binding ClearCredentialCommand}"
                     Foreground="{StaticResource AppTextBrush}">
@@ -243,7 +239,7 @@
                 </Button>
                 <Button
                     MinHeight="36"
-                    Padding="14,6"
+                    Padding="10,6"
                     Background="{StaticResource AppButtonBrush}"
                     Command="{Binding OpenSettingsCommand}"
                     Foreground="{StaticResource AppTextBrush}">
