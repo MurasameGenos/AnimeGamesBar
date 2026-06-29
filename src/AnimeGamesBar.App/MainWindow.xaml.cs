@@ -180,7 +180,13 @@ public sealed partial class MainWindow : Window
     {
         var hwnd = WindowNative.GetWindowHandle(this);
         var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
-        AppWindow.GetFromWindowId(windowId).Resize(new SizeInt32(1380, 860));
+        var appWindow = AppWindow.GetFromWindowId(windowId);
+        var workArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Nearest).WorkArea;
+        var width = Math.Min(1380, Math.Max(640, workArea.Width - 40));
+        var height = Math.Min(860, Math.Max(480, workArea.Height - 40));
+        var x = workArea.X + Math.Max(0, (workArea.Width - width) / 2);
+        var y = workArea.Y + Math.Max(0, (workArea.Height - height) / 2);
+        appWindow.MoveAndResize(new RectInt32(x, y, width, height));
     }
 
     private void ApplyThemePalette()

@@ -496,7 +496,7 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    public string SignInButtonText => ManualSignInAllGames ? "\u5168\u90E8\u7B7E\u5230" : "\u672C\u9875\u7B7E\u5230";
+    public string SignInButtonText => "\u7B7E\u5230";
 
     public bool NotificationsEnabled
     {
@@ -633,9 +633,9 @@ public sealed class MainViewModel : ObservableObject
 
     public string SelectedGameTitle => GameTitle(_selectedGame);
 
-    public string LaunchGameButtonText => "\u542F\u52A8\u6E38\u620F";
+    public string LaunchGameButtonText => "\u6E38\u620F";
 
-    public string LaunchScriptButtonText => "\u542F\u52A8\u811A\u672C";
+    public string LaunchScriptButtonText => "\u811A\u672C";
 
     public string SelectedGameLaunchPath
     {
