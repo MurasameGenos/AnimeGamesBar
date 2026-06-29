@@ -294,11 +294,13 @@
                         <PasswordBox
                             x:Name="TokenBox"
                             Header="{Binding TokenFieldHeader}"
+                            PasswordRevealMode="Peek"
                             PasswordChanged="TokenBox_OnPasswordChanged" />
 
                         <PasswordBox
                             x:Name="CookieBox"
                             Header="{Binding CookieFieldHeader}"
+                            PasswordRevealMode="Peek"
                             PasswordChanged="CookieBox_OnPasswordChanged" />
 
                         <TextBox
