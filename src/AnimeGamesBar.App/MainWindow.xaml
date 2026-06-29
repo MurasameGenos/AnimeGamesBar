@@ -1136,7 +1136,7 @@
                                                 Text="&#x91CD;&#x590D;&#x63D0;&#x9192;&#x51B7;&#x5374;" />
                                             <TextBlock
                                                 Style="{StaticResource MutedTextStyle}"
-                                                Text="&#x5F00;&#x542F;&#x540E;&#xFF0C;&#x540C;&#x4E00;&#x63D0;&#x9192;&#x547D;&#x4E2D;&#x5E76;&#x8D85;&#x8FC7;&#x51B7;&#x5374;&#x65F6;&#x95F4;&#x65F6;&#x53EF;&#x518D;&#x6B21;&#x63D0;&#x9192;&#x3002;" />
+                                                Text="&#x5173;&#x95ED;&#x65F6;&#x6BCF;&#x6B21;&#x547D;&#x4E2D;&#x90FD;&#x53EF;&#x63D0;&#x9192;&#xFF1B;&#x5F00;&#x542F;&#x540E;&#x540C;&#x4E00;&#x63D0;&#x9192;&#x9700;&#x8D85;&#x8FC7;&#x51B7;&#x5374;&#x65F6;&#x95F4;&#x624D;&#x4F1A;&#x518D;&#x6B21;&#x63D0;&#x9192;&#x3002;" />
                                         </StackPanel>
                                         <ToggleSwitch
                                             Grid.Column="1"

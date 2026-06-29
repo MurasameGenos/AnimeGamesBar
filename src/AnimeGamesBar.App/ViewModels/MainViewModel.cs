@@ -1851,15 +1851,13 @@ public sealed class MainViewModel : ObservableObject
             return true;
         }
 
-        if (!NotificationCooldownEnabled)
+        if (NotificationCooldownEnabled)
         {
-            return false;
-        }
-
-        var cooldown = TimeSpan.FromMinutes(NotificationCooldownMinutes);
-        if (now - lastSentAt < cooldown)
-        {
-            return false;
+            var cooldown = TimeSpan.FromMinutes(NotificationCooldownMinutes);
+            if (now - lastSentAt < cooldown)
+            {
+                return false;
+            }
         }
 
         _sentNotificationTimes[notificationKey] = now;
