@@ -71,6 +71,7 @@ public sealed class MainViewModel : ObservableObject
     private double _yihuanAutoRefreshIntervalMinutes = 5;
     private bool _isSettingsPageOpen;
     private bool _isNotificationRulesPageOpen;
+    private bool _isLaunchPathsPageOpen;
     private bool _useDarkTheme = true;
     private bool _autoSignEnabled = true;
     private bool _dailyAutoSignEnabled = true;
@@ -147,16 +148,19 @@ public sealed class MainViewModel : ObservableObject
         {
             IsSettingsPageOpen = true;
             IsNotificationRulesPageOpen = false;
+            IsLaunchPathsPageOpen = false;
             return Task.CompletedTask;
         });
         CloseSettingsCommand = new AsyncCommand(_ =>
         {
             IsSettingsPageOpen = false;
             IsNotificationRulesPageOpen = false;
+            IsLaunchPathsPageOpen = false;
             return Task.CompletedTask;
         });
         OpenNotificationRulesSettingsCommand = new AsyncCommand(_ =>
         {
+            IsLaunchPathsPageOpen = false;
             IsNotificationRulesPageOpen = true;
             return Task.CompletedTask;
         });
@@ -165,7 +169,26 @@ public sealed class MainViewModel : ObservableObject
             IsNotificationRulesPageOpen = false;
             return Task.CompletedTask;
         });
+        OpenLaunchPathsSettingsCommand = new AsyncCommand(_ =>
+        {
+            IsNotificationRulesPageOpen = false;
+            IsLaunchPathsPageOpen = true;
+            return Task.CompletedTask;
+        });
+        CloseLaunchPathsSettingsCommand = new AsyncCommand(_ =>
+        {
+            IsLaunchPathsPageOpen = false;
+            return Task.CompletedTask;
+        });
         SaveNotificationRulesSettingsCommand = new AsyncCommand(SaveNotificationRulesSettingsAsync);
+        BrowseArknightsGamePathCommand = new AsyncCommand(cancellationToken => BrowseLaunchPathAsync(GameDashboardKind.Arknights, launchScript: false, cancellationToken));
+        BrowseArknightsScriptPathCommand = new AsyncCommand(cancellationToken => BrowseLaunchPathAsync(GameDashboardKind.Arknights, launchScript: true, cancellationToken));
+        BrowseEndfieldGamePathCommand = new AsyncCommand(cancellationToken => BrowseLaunchPathAsync(GameDashboardKind.Endfield, launchScript: false, cancellationToken));
+        BrowseEndfieldScriptPathCommand = new AsyncCommand(cancellationToken => BrowseLaunchPathAsync(GameDashboardKind.Endfield, launchScript: true, cancellationToken));
+        BrowseWutheringWavesGamePathCommand = new AsyncCommand(cancellationToken => BrowseLaunchPathAsync(GameDashboardKind.WutheringWaves, launchScript: false, cancellationToken));
+        BrowseWutheringWavesScriptPathCommand = new AsyncCommand(cancellationToken => BrowseLaunchPathAsync(GameDashboardKind.WutheringWaves, launchScript: true, cancellationToken));
+        BrowseYihuanGamePathCommand = new AsyncCommand(cancellationToken => BrowseLaunchPathAsync(GameDashboardKind.Yihuan, launchScript: false, cancellationToken));
+        BrowseYihuanScriptPathCommand = new AsyncCommand(cancellationToken => BrowseLaunchPathAsync(GameDashboardKind.Yihuan, launchScript: true, cancellationToken));
         SelectArknightsCommand = new AsyncCommand(_ =>
         {
             IsSettingsPageOpen = false;
@@ -234,6 +257,22 @@ public sealed class MainViewModel : ObservableObject
 
     public AsyncCommand BrowseScriptPathCommand { get; }
 
+    public AsyncCommand BrowseArknightsGamePathCommand { get; }
+
+    public AsyncCommand BrowseArknightsScriptPathCommand { get; }
+
+    public AsyncCommand BrowseEndfieldGamePathCommand { get; }
+
+    public AsyncCommand BrowseEndfieldScriptPathCommand { get; }
+
+    public AsyncCommand BrowseWutheringWavesGamePathCommand { get; }
+
+    public AsyncCommand BrowseWutheringWavesScriptPathCommand { get; }
+
+    public AsyncCommand BrowseYihuanGamePathCommand { get; }
+
+    public AsyncCommand BrowseYihuanScriptPathCommand { get; }
+
     public AsyncCommand SelectArknightsCommand { get; }
 
     public AsyncCommand SelectEndfieldCommand { get; }
@@ -249,6 +288,10 @@ public sealed class MainViewModel : ObservableObject
     public AsyncCommand OpenNotificationRulesSettingsCommand { get; }
 
     public AsyncCommand CloseNotificationRulesSettingsCommand { get; }
+
+    public AsyncCommand OpenLaunchPathsSettingsCommand { get; }
+
+    public AsyncCommand CloseLaunchPathsSettingsCommand { get; }
 
     public AsyncCommand SaveNotificationRulesSettingsCommand { get; }
 
@@ -369,6 +412,7 @@ public sealed class MainViewModel : ObservableObject
                 OnPropertyChanged(nameof(SettingsVisibility));
                 OnPropertyChanged(nameof(GeneralSettingsVisibility));
                 OnPropertyChanged(nameof(NotificationRulesSettingsVisibility));
+                OnPropertyChanged(nameof(LaunchPathsSettingsVisibility));
             }
         }
     }
@@ -386,15 +430,34 @@ public sealed class MainViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(GeneralSettingsVisibility));
                 OnPropertyChanged(nameof(NotificationRulesSettingsVisibility));
+                OnPropertyChanged(nameof(LaunchPathsSettingsVisibility));
             }
         }
     }
 
-    public Visibility GeneralSettingsVisibility => IsSettingsPageOpen && !IsNotificationRulesPageOpen
+    public bool IsLaunchPathsPageOpen
+    {
+        get => _isLaunchPathsPageOpen;
+        set
+        {
+            if (SetProperty(ref _isLaunchPathsPageOpen, value))
+            {
+                OnPropertyChanged(nameof(GeneralSettingsVisibility));
+                OnPropertyChanged(nameof(NotificationRulesSettingsVisibility));
+                OnPropertyChanged(nameof(LaunchPathsSettingsVisibility));
+            }
+        }
+    }
+
+    public Visibility GeneralSettingsVisibility => IsSettingsPageOpen && !IsNotificationRulesPageOpen && !IsLaunchPathsPageOpen
         ? Visibility.Visible
         : Visibility.Collapsed;
 
     public Visibility NotificationRulesSettingsVisibility => IsSettingsPageOpen && IsNotificationRulesPageOpen
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+    public Visibility LaunchPathsSettingsVisibility => IsSettingsPageOpen && IsLaunchPathsPageOpen
         ? Visibility.Visible
         : Visibility.Collapsed;
 
@@ -659,6 +722,54 @@ public sealed class MainViewModel : ObservableObject
                 OnLaunchPathChanged();
             }
         }
+    }
+
+    public string ArknightsGameLaunchPath
+    {
+        get => _arknightsGamePath;
+        set => SetLaunchPathAndSave(GameDashboardKind.Arknights, launchScript: false, value);
+    }
+
+    public string ArknightsScriptLaunchPath
+    {
+        get => _arknightsScriptPath;
+        set => SetLaunchPathAndSave(GameDashboardKind.Arknights, launchScript: true, value);
+    }
+
+    public string EndfieldGameLaunchPath
+    {
+        get => _endfieldGamePath;
+        set => SetLaunchPathAndSave(GameDashboardKind.Endfield, launchScript: false, value);
+    }
+
+    public string EndfieldScriptLaunchPath
+    {
+        get => _endfieldScriptPath;
+        set => SetLaunchPathAndSave(GameDashboardKind.Endfield, launchScript: true, value);
+    }
+
+    public string WutheringWavesGameLaunchPath
+    {
+        get => _wutheringWavesGamePath;
+        set => SetLaunchPathAndSave(GameDashboardKind.WutheringWaves, launchScript: false, value);
+    }
+
+    public string WutheringWavesScriptLaunchPath
+    {
+        get => _wutheringWavesScriptPath;
+        set => SetLaunchPathAndSave(GameDashboardKind.WutheringWaves, launchScript: true, value);
+    }
+
+    public string YihuanGameLaunchPath
+    {
+        get => _yihuanGamePath;
+        set => SetLaunchPathAndSave(GameDashboardKind.Yihuan, launchScript: false, value);
+    }
+
+    public string YihuanScriptLaunchPath
+    {
+        get => _yihuanScriptPath;
+        set => SetLaunchPathAndSave(GameDashboardKind.Yihuan, launchScript: true, value);
     }
 
     public string AccountPanelSubtitle => _selectedGame switch
@@ -992,6 +1103,14 @@ public sealed class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(DailyAutoSignSummary));
             OnPropertyChanged(nameof(SelectedGameLaunchPath));
             OnPropertyChanged(nameof(SelectedScriptLaunchPath));
+            OnPropertyChanged(nameof(ArknightsGameLaunchPath));
+            OnPropertyChanged(nameof(ArknightsScriptLaunchPath));
+            OnPropertyChanged(nameof(EndfieldGameLaunchPath));
+            OnPropertyChanged(nameof(EndfieldScriptLaunchPath));
+            OnPropertyChanged(nameof(WutheringWavesGameLaunchPath));
+            OnPropertyChanged(nameof(WutheringWavesScriptLaunchPath));
+            OnPropertyChanged(nameof(YihuanGameLaunchPath));
+            OnPropertyChanged(nameof(YihuanScriptLaunchPath));
             ConfigureNotificationChannels();
         }
         finally
@@ -1054,6 +1173,11 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task BrowseLaunchPathAsync(bool launchScript, CancellationToken cancellationToken)
     {
+        await BrowseLaunchPathAsync(_selectedGame, launchScript, cancellationToken);
+    }
+
+    private async Task BrowseLaunchPathAsync(GameDashboardKind game, bool launchScript, CancellationToken cancellationToken)
+    {
         cancellationToken.ThrowIfCancellationRequested();
         if (OwnerWindow is null)
         {
@@ -1075,7 +1199,7 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
-        if (SetLaunchPath(_selectedGame, launchScript, file.Path))
+        if (SetLaunchPath(game, launchScript, file.Path))
         {
             OnLaunchPathChanged();
         }
@@ -2334,10 +2458,26 @@ public sealed class MainViewModel : ObservableObject
         };
     }
 
+    private void SetLaunchPathAndSave(GameDashboardKind game, bool launchScript, string? value)
+    {
+        if (SetLaunchPath(game, launchScript, value))
+        {
+            OnLaunchPathChanged();
+        }
+    }
+
     private void OnLaunchPathChanged()
     {
         OnPropertyChanged(nameof(SelectedGameLaunchPath));
         OnPropertyChanged(nameof(SelectedScriptLaunchPath));
+        OnPropertyChanged(nameof(ArknightsGameLaunchPath));
+        OnPropertyChanged(nameof(ArknightsScriptLaunchPath));
+        OnPropertyChanged(nameof(EndfieldGameLaunchPath));
+        OnPropertyChanged(nameof(EndfieldScriptLaunchPath));
+        OnPropertyChanged(nameof(WutheringWavesGameLaunchPath));
+        OnPropertyChanged(nameof(WutheringWavesScriptLaunchPath));
+        OnPropertyChanged(nameof(YihuanGameLaunchPath));
+        OnPropertyChanged(nameof(YihuanScriptLaunchPath));
         _ = SaveSettingsAsync();
     }
 

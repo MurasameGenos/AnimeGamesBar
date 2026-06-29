@@ -913,16 +913,21 @@
                         </Button>
                     </Grid>
 
-                    <Grid
+                    <ScrollViewer
                         Grid.Row="1"
-                        ColumnSpacing="16"
-                        RowSpacing="16"
+                        Grid.RowSpan="2"
+                        VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled"
                         Visibility="{Binding GeneralSettingsVisibility}">
+                    <Grid
+                        ColumnSpacing="16"
+                        RowSpacing="16">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -1085,68 +1090,37 @@
                             BorderThickness="1"
                             CornerRadius="6"
                             Padding="16">
-                            <StackPanel Spacing="12">
+                            <Grid ColumnSpacing="14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <StackPanel Spacing="4">
                                     <TextBlock
                                         FontSize="18"
                                         FontWeight="SemiBold"
                                         Foreground="{StaticResource AppTextBrush}"
-                                        Text="&#x5F53;&#x524D;&#x6E38;&#x620F;&#x542F;&#x52A8;&#x8DEF;&#x5F84;" />
+                                        Text="&#x542F;&#x52A8;&#x8DEF;&#x5F84;" />
                                     <TextBlock
                                         Style="{StaticResource MutedTextStyle}"
-                                        Text="{Binding SelectedGameTitle}" />
+                                        Text="&#x4E3A;&#x6BCF;&#x4E2A;&#x6E38;&#x620F;&#x5355;&#x72EC;&#x914D;&#x7F6E;&#x6E38;&#x620F;&#x7A0B;&#x5E8F;&#x548C;&#x811A;&#x672C;&#x7A0B;&#x5E8F;&#x8DEF;&#x5F84;&#x3002;" />
                                 </StackPanel>
-
-                                <Grid ColumnSpacing="10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox
-                                        Header="&#x6E38;&#x620F;&#x7A0B;&#x5E8F;&#x8DEF;&#x5F84;"
-                                        PlaceholderText="exe &#x6216; lnk"
-                                        Text="{Binding SelectedGameLaunchPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <Button
-                                        Grid.Column="1"
-                                        MinHeight="36"
-                                        Margin="0,28,0,0"
-                                        Padding="14,6"
-                                        Background="{StaticResource AppButtonBrush}"
-                                        Command="{Binding BrowseGamePathCommand}"
-                                        Foreground="{StaticResource AppTextBrush}">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <SymbolIcon Symbol="OpenFile" />
-                                            <TextBlock Text="&#x9009;&#x62E9;" />
-                                        </StackPanel>
-                                    </Button>
-                                </Grid>
-
-                                <Grid ColumnSpacing="10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox
-                                        Header="&#x811A;&#x672C;&#x7A0B;&#x5E8F;&#x8DEF;&#x5F84;"
-                                        PlaceholderText="exe &#x6216; lnk"
-                                        Text="{Binding SelectedScriptLaunchPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <Button
-                                        Grid.Column="1"
-                                        MinHeight="36"
-                                        Margin="0,28,0,0"
-                                        Padding="14,6"
-                                        Background="{StaticResource AppButtonBrush}"
-                                        Command="{Binding BrowseScriptPathCommand}"
-                                        Foreground="{StaticResource AppTextBrush}">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <SymbolIcon Symbol="OpenFile" />
-                                            <TextBlock Text="&#x9009;&#x62E9;" />
-                                        </StackPanel>
-                                    </Button>
-                                </Grid>
-                            </StackPanel>
+                                <Button
+                                    Grid.Column="1"
+                                    MinHeight="36"
+                                    Padding="14,6"
+                                    Background="{StaticResource AppAccentBrush}"
+                                    Command="{Binding OpenLaunchPathsSettingsCommand}"
+                                    Foreground="#101418">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <SymbolIcon Symbol="OpenFile" />
+                                        <TextBlock Text="&#x8BBE;&#x7F6E;" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
                         </Border>
                     </Grid>
+                    </ScrollViewer>
 
                     <Grid
                         Grid.Row="1"
@@ -1394,6 +1368,217 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <Grid
+                        Grid.Row="1"
+                        Grid.RowSpan="2"
+                        RowSpacing="14"
+                        Visibility="{Binding LaunchPathsSettingsVisibility}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="4">
+                                <TextBlock
+                                    FontSize="20"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource AppTextBrush}"
+                                    Text="&#x542F;&#x52A8;&#x8DEF;&#x5F84;" />
+                                <TextBlock
+                                    Style="{StaticResource MutedTextStyle}"
+                                    Text="&#x652F;&#x6301;&#x9009;&#x62E9; exe &#x548C;&#x5FEB;&#x6377;&#x65B9;&#x5F0F;&#xFF0C;&#x9876;&#x680F;&#x7684;&#x6E38;&#x620F;&#x548C;&#x811A;&#x672C;&#x6309;&#x94AE;&#x4F1A;&#x542F;&#x52A8;&#x5F53;&#x524D;&#x9875;&#x9762;&#x5BF9;&#x5E94;&#x7684;&#x8DEF;&#x5F84;&#x3002;" />
+                            </StackPanel>
+                            <Button
+                                Grid.Column="1"
+                                MinHeight="36"
+                                Padding="14,6"
+                                Background="{StaticResource AppButtonBrush}"
+                                Command="{Binding CloseLaunchPathsSettingsCommand}"
+                                Foreground="{StaticResource AppTextBrush}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <SymbolIcon Symbol="Back" />
+                                    <TextBlock Text="&#x8FD4;&#x56DE;&#x8BBE;&#x7F6E;" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <ScrollViewer
+                            Grid.Row="1"
+                            HorizontalScrollBarVisibility="Disabled"
+                            VerticalScrollBarVisibility="Auto">
+                            <StackPanel Spacing="12">
+                                <Border
+                                    Background="{StaticResource CardSurfaceBrush}"
+                                    BorderBrush="{StaticResource AppBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="14">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock
+                                            FontSize="18"
+                                            FontWeight="SemiBold"
+                                            Foreground="{StaticResource AppTextBrush}"
+                                            Text="&#x660E;&#x65E5;&#x65B9;&#x821F;" />
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Header="&#x6E38;&#x620F;&#x7A0B;&#x5E8F;" PlaceholderText="exe &#x6216; lnk" Text="{Binding ArknightsGameLaunchPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Grid.Column="1" MinHeight="36" Margin="0,28,0,0" Padding="14,6" Background="{StaticResource AppButtonBrush}" Command="{Binding BrowseArknightsGamePathCommand}" Foreground="{StaticResource AppTextBrush}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <SymbolIcon Symbol="OpenFile" />
+                                                    <TextBlock Text="&#x9009;&#x62E9;" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Header="&#x811A;&#x672C;&#x7A0B;&#x5E8F;" PlaceholderText="exe &#x6216; lnk" Text="{Binding ArknightsScriptLaunchPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Grid.Column="1" MinHeight="36" Margin="0,28,0,0" Padding="14,6" Background="{StaticResource AppButtonBrush}" Command="{Binding BrowseArknightsScriptPathCommand}" Foreground="{StaticResource AppTextBrush}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <SymbolIcon Symbol="OpenFile" />
+                                                    <TextBlock Text="&#x9009;&#x62E9;" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border
+                                    Background="{StaticResource CardSurfaceBrush}"
+                                    BorderBrush="{StaticResource AppBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="14">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock
+                                            FontSize="18"
+                                            FontWeight="SemiBold"
+                                            Foreground="{StaticResource AppTextBrush}"
+                                            Text="&#x7EC8;&#x672B;&#x5730;" />
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Header="&#x6E38;&#x620F;&#x7A0B;&#x5E8F;" PlaceholderText="exe &#x6216; lnk" Text="{Binding EndfieldGameLaunchPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Grid.Column="1" MinHeight="36" Margin="0,28,0,0" Padding="14,6" Background="{StaticResource AppButtonBrush}" Command="{Binding BrowseEndfieldGamePathCommand}" Foreground="{StaticResource AppTextBrush}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <SymbolIcon Symbol="OpenFile" />
+                                                    <TextBlock Text="&#x9009;&#x62E9;" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Header="&#x811A;&#x672C;&#x7A0B;&#x5E8F;" PlaceholderText="exe &#x6216; lnk" Text="{Binding EndfieldScriptLaunchPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Grid.Column="1" MinHeight="36" Margin="0,28,0,0" Padding="14,6" Background="{StaticResource AppButtonBrush}" Command="{Binding BrowseEndfieldScriptPathCommand}" Foreground="{StaticResource AppTextBrush}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <SymbolIcon Symbol="OpenFile" />
+                                                    <TextBlock Text="&#x9009;&#x62E9;" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border
+                                    Background="{StaticResource CardSurfaceBrush}"
+                                    BorderBrush="{StaticResource AppBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="14">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock
+                                            FontSize="18"
+                                            FontWeight="SemiBold"
+                                            Foreground="{StaticResource AppTextBrush}"
+                                            Text="&#x9E23;&#x6F6E;" />
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Header="&#x6E38;&#x620F;&#x7A0B;&#x5E8F;" PlaceholderText="exe &#x6216; lnk" Text="{Binding WutheringWavesGameLaunchPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Grid.Column="1" MinHeight="36" Margin="0,28,0,0" Padding="14,6" Background="{StaticResource AppButtonBrush}" Command="{Binding BrowseWutheringWavesGamePathCommand}" Foreground="{StaticResource AppTextBrush}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <SymbolIcon Symbol="OpenFile" />
+                                                    <TextBlock Text="&#x9009;&#x62E9;" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Header="&#x811A;&#x672C;&#x7A0B;&#x5E8F;" PlaceholderText="exe &#x6216; lnk" Text="{Binding WutheringWavesScriptLaunchPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Grid.Column="1" MinHeight="36" Margin="0,28,0,0" Padding="14,6" Background="{StaticResource AppButtonBrush}" Command="{Binding BrowseWutheringWavesScriptPathCommand}" Foreground="{StaticResource AppTextBrush}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <SymbolIcon Symbol="OpenFile" />
+                                                    <TextBlock Text="&#x9009;&#x62E9;" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border
+                                    Background="{StaticResource CardSurfaceBrush}"
+                                    BorderBrush="{StaticResource AppBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="14">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock
+                                            FontSize="18"
+                                            FontWeight="SemiBold"
+                                            Foreground="{StaticResource AppTextBrush}"
+                                            Text="&#x5F02;&#x73AF;" />
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Header="&#x6E38;&#x620F;&#x7A0B;&#x5E8F;" PlaceholderText="exe &#x6216; lnk" Text="{Binding YihuanGameLaunchPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Grid.Column="1" MinHeight="36" Margin="0,28,0,0" Padding="14,6" Background="{StaticResource AppButtonBrush}" Command="{Binding BrowseYihuanGamePathCommand}" Foreground="{StaticResource AppTextBrush}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <SymbolIcon Symbol="OpenFile" />
+                                                    <TextBlock Text="&#x9009;&#x62E9;" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Header="&#x811A;&#x672C;&#x7A0B;&#x5E8F;" PlaceholderText="exe &#x6216; lnk" Text="{Binding YihuanScriptLaunchPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Grid.Column="1" MinHeight="36" Margin="0,28,0,0" Padding="14,6" Background="{StaticResource AppButtonBrush}" Command="{Binding BrowseYihuanScriptPathCommand}" Foreground="{StaticResource AppTextBrush}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <SymbolIcon Symbol="OpenFile" />
+                                                    <TextBlock Text="&#x9009;&#x62E9;" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </ScrollViewer>
                     </Grid>
