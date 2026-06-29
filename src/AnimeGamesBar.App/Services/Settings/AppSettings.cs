@@ -20,6 +20,8 @@ public sealed record AppSettings(
     bool DailyAutoSignEnabled = true,
     bool ServerChanEnabled = false,
     string ServerChanSendKey = "",
+    bool NotificationCooldownEnabled = false,
+    double NotificationCooldownMinutes = 60,
     IReadOnlyList<NotificationRuleSetting>? NotificationRules = null)
 {
     public static AppSettings Default { get; } = new(

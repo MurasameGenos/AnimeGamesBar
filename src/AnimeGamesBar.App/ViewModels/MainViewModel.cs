@@ -31,7 +31,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly ISettingsStore _settingsStore;
     private readonly IAppNotificationService _notificationService;
     private readonly IStartupService _startupService;
-    private readonly HashSet<string> _sentNotificationKeys = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, DateTimeOffset> _sentNotificationTimes = new(StringComparer.Ordinal);
     private readonly List<ArknightsPlayerBinding> _arknightsBindings = new();
     private readonly List<ArknightsPlayerBinding> _endfieldBindings = new();
     private readonly List<ArknightsPlayerBinding> _wutheringWavesBindings = new();
@@ -81,6 +81,10 @@ public sealed class MainViewModel : ObservableObject
     private bool _settingsLoaded;
     private bool _isApplyingSettings;
     private bool _notificationRulesDirty;
+    private bool _notificationCooldownEnabled;
+    private bool _savedNotificationCooldownEnabled;
+    private double _notificationCooldownMinutes = 60;
+    private double _savedNotificationCooldownMinutes = 60;
     private IReadOnlyList<NotificationRuleSetting> _savedNotificationRuleSettings = Array.Empty<NotificationRuleSetting>();
 
     public MainViewModel(
@@ -386,6 +390,31 @@ public sealed class MainViewModel : ObservableObject
     public string NotificationRulesSaveButtonText => NotificationRulesDirty
         ? "\u4FDD\u5B58\u66F4\u6539"
         : "\u5DF2\u4FDD\u5B58";
+
+    public bool NotificationCooldownEnabled
+    {
+        get => _notificationCooldownEnabled;
+        set
+        {
+            if (SetProperty(ref _notificationCooldownEnabled, value))
+            {
+                NotificationRulesDirty = true;
+            }
+        }
+    }
+
+    public double NotificationCooldownMinutes
+    {
+        get => _notificationCooldownMinutes;
+        set
+        {
+            var normalized = NormalizeNotificationCooldownMinutes(value);
+            if (SetProperty(ref _notificationCooldownMinutes, normalized))
+            {
+                NotificationRulesDirty = true;
+            }
+        }
+    }
 
     public bool UseDarkTheme
     {
@@ -876,6 +905,10 @@ public sealed class MainViewModel : ObservableObject
             NotificationsEnabled = settings.NotificationsEnabled;
             ServerChanEnabled = settings.ServerChanEnabled;
             ServerChanSendKey = settings.ServerChanSendKey;
+            NotificationCooldownEnabled = settings.NotificationCooldownEnabled;
+            NotificationCooldownMinutes = settings.NotificationCooldownMinutes;
+            _savedNotificationCooldownEnabled = NotificationCooldownEnabled;
+            _savedNotificationCooldownMinutes = NotificationCooldownMinutes;
             InitializeNotificationRules(settings.NotificationRules);
             StartWithWindows = settings.StartWithWindows || _startupService.IsEnabled();
             _arknightsAutoRefreshEnabled = settings.ArknightsAutoRefreshEnabled;
@@ -907,7 +940,10 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    private async Task<bool> SaveSettingsAsync(IReadOnlyList<NotificationRuleSetting>? notificationRules = null)
+    private async Task<bool> SaveSettingsAsync(
+        IReadOnlyList<NotificationRuleSetting>? notificationRules = null,
+        bool? notificationCooldownEnabled = null,
+        double? notificationCooldownMinutes = null)
     {
         if (!_settingsLoaded || _isApplyingSettings)
         {
@@ -934,6 +970,8 @@ public sealed class MainViewModel : ObservableObject
                     DailyAutoSignEnabled,
                     ServerChanEnabled,
                     ServerChanSendKey,
+                    notificationCooldownEnabled ?? _savedNotificationCooldownEnabled,
+                    notificationCooldownMinutes ?? _savedNotificationCooldownMinutes,
                     notificationRules ?? _savedNotificationRuleSettings),
                 CancellationToken.None);
             return true;
@@ -1752,13 +1790,18 @@ public sealed class MainViewModel : ObservableObject
     private async Task SaveNotificationRulesSettingsAsync(CancellationToken cancellationToken)
     {
         var settings = NotificationRules.Select(rule => rule.ToSetting()).ToArray();
-        var saved = await SaveSettingsAsync(settings);
+        var saved = await SaveSettingsAsync(
+            settings,
+            NotificationCooldownEnabled,
+            NotificationCooldownMinutes);
         if (!saved)
         {
             return;
         }
 
         _savedNotificationRuleSettings = settings;
+        _savedNotificationCooldownEnabled = NotificationCooldownEnabled;
+        _savedNotificationCooldownMinutes = NotificationCooldownMinutes;
         NotificationRulesDirty = false;
         SetStatus("\u63D0\u9192\u89C4\u5219\u5DF2\u4FDD\u5B58\u3002", InfoBarSeverity.Success);
     }
@@ -1787,7 +1830,7 @@ public sealed class MainViewModel : ObservableObject
             }
 
             var notificationKey = TryCreateNotificationKey(rule, metric, now);
-            if (notificationKey is null || !_sentNotificationKeys.Add(notificationKey))
+            if (notificationKey is null || !TryReserveNotification(notificationKey, now))
             {
                 continue;
             }
@@ -1798,6 +1841,29 @@ public sealed class MainViewModel : ObservableObject
                 message,
                 cancellationToken);
         }
+    }
+
+    private bool TryReserveNotification(string notificationKey, DateTimeOffset now)
+    {
+        if (!_sentNotificationTimes.TryGetValue(notificationKey, out var lastSentAt))
+        {
+            _sentNotificationTimes[notificationKey] = now;
+            return true;
+        }
+
+        if (!NotificationCooldownEnabled)
+        {
+            return false;
+        }
+
+        var cooldown = TimeSpan.FromMinutes(NotificationCooldownMinutes);
+        if (now - lastSentAt < cooldown)
+        {
+            return false;
+        }
+
+        _sentNotificationTimes[notificationKey] = now;
+        return true;
     }
 
     private static string? TryCreateNotificationKey(
@@ -2102,6 +2168,11 @@ public sealed class MainViewModel : ObservableObject
     private static double NormalizeAutoRefreshInterval(double value)
     {
         return Math.Clamp(double.IsNaN(value) || value <= 0 ? 5 : value, 1, 180);
+    }
+
+    private static double NormalizeNotificationCooldownMinutes(double value)
+    {
+        return Math.Clamp(double.IsNaN(value) || value <= 0 ? 60 : Math.Round(value), 1, 1440);
     }
 
 

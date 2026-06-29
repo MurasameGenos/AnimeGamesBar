@@ -1116,6 +1116,42 @@
                             Grid.Row="1"
                             HorizontalScrollBarVisibility="Disabled"
                             VerticalScrollBarVisibility="Auto">
+                            <StackPanel Spacing="12">
+                                <Border
+                                    Background="{StaticResource CardSurfaceBrush}"
+                                    BorderBrush="{StaticResource AppBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="14">
+                                    <Grid ColumnSpacing="16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="140" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Spacing="3">
+                                            <TextBlock
+                                                FontWeight="SemiBold"
+                                                Foreground="{StaticResource AppTextBrush}"
+                                                Text="&#x91CD;&#x590D;&#x63D0;&#x9192;&#x51B7;&#x5374;" />
+                                            <TextBlock
+                                                Style="{StaticResource MutedTextStyle}"
+                                                Text="&#x5F00;&#x542F;&#x540E;&#xFF0C;&#x540C;&#x4E00;&#x63D0;&#x9192;&#x547D;&#x4E2D;&#x5E76;&#x8D85;&#x8FC7;&#x51B7;&#x5374;&#x65F6;&#x95F4;&#x65F6;&#x53EF;&#x518D;&#x6B21;&#x63D0;&#x9192;&#x3002;" />
+                                        </StackPanel>
+                                        <ToggleSwitch
+                                            Grid.Column="1"
+                                            Header="&#x542F;&#x7528;"
+                                            IsOn="{Binding NotificationCooldownEnabled, Mode=TwoWay}" />
+                                        <NumberBox
+                                            Grid.Column="2"
+                                            Header="&#x51B7;&#x5374;&#x5206;&#x949F;"
+                                            IsEnabled="{Binding NotificationCooldownEnabled}"
+                                            Maximum="1440"
+                                            Minimum="1"
+                                            SpinButtonPlacementMode="Compact"
+                                            Value="{Binding NotificationCooldownMinutes, Mode=TwoWay}" />
+                                    </Grid>
+                                </Border>
                             <ItemsControl ItemsSource="{Binding NotificationRules}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -1260,6 +1296,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            </StackPanel>
                         </ScrollViewer>
                     </Grid>
                 </Grid>
