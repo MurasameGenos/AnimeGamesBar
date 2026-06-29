@@ -695,7 +695,7 @@
                             BorderThickness="1"
                             CornerRadius="6">
                             <StackPanel Spacing="10">
-                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x6218;&#x6B4C;&#x91CD;&#x594F;&#x6B21;&#x6570;" />
+                                <TextBlock Style="{StaticResource MetricTitleStyle}" Text="&#x6218;&#x6B4C;&#x91CD;&#x594F;&#x5269;&#x4F59;&#x6536;&#x53D6;&#x6B21;&#x6570;" />
                                 <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding WutheringWeeklyBossText}" />
                                 <ProgressBar Foreground="{StaticResource AppAccentBrush}" Maximum="{Binding WutheringWeeklyBossMax}" Value="{Binding WutheringWeeklyBossValue}" />
                                 <TextBlock Style="{StaticResource MutedTextStyle}" Text="Weekly Challenge" />

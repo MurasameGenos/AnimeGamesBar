@@ -735,7 +735,7 @@ public sealed class MainViewModel : ObservableObject
 
     public string WutheringSeaResetText => FormatRefreshAt(_wutheringWavesSnapshot?.SeaResetAt);
 
-    public string WutheringFinalBattleEndText => FormatCompleteAt("\u7ED3\u675F", _wutheringWavesSnapshot?.FinalBattleEndAt);
+    public string WutheringFinalBattleEndText => FormatEndAt("\u7ED3\u675F", _wutheringWavesSnapshot?.FinalBattleEndAt);
 
     public string WutheringSignInText => _wutheringWavesSnapshot?.HasSignedIn == true ? "\u4ECA\u65E5\u5DF2\u7B7E\u5230" : "\u4ECA\u65E5\u672A\u7B7E\u5230";
 
@@ -1875,6 +1875,21 @@ public sealed class MainViewModel : ObservableObject
 
         var timeText = FormatClockWithDay(completeAt.Value);
         return string.IsNullOrWhiteSpace(label) ? timeText : $"{label} {timeText}";
+    }
+
+    private static string FormatEndAt(string label, DateTimeOffset? endAt)
+    {
+        if (endAt is null)
+        {
+            return "\u7ED3\u675F\u65F6\u95F4\u672A\u77E5";
+        }
+
+        if (endAt <= DateTimeOffset.Now)
+        {
+            return "\u5DF2\u7ED3\u675F";
+        }
+
+        return $"{label} {FormatClockWithDay(endAt.Value)} \u00B7 \u8FD8\u9700 {FormatDuration(endAt.Value - DateTimeOffset.Now)}";
     }
 
     private static string FormatClockWithDay(DateTimeOffset time)
