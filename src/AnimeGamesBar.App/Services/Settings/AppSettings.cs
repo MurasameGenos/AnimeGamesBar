@@ -22,6 +22,14 @@ public sealed record AppSettings(
     string ServerChanSendKey = "",
     bool NotificationCooldownEnabled = false,
     double NotificationCooldownMinutes = 60,
+    string ArknightsGamePath = "",
+    string ArknightsScriptPath = "",
+    string EndfieldGamePath = "",
+    string EndfieldScriptPath = "",
+    string WutheringWavesGamePath = "",
+    string WutheringWavesScriptPath = "",
+    string YihuanGamePath = "",
+    string YihuanScriptPath = "",
     IReadOnlyList<NotificationRuleSetting>? NotificationRules = null)
 {
     public static AppSettings Default { get; } = new(

@@ -22,6 +22,7 @@ public sealed class NotificationRuleViewModel : ObservableObject
     private string _weekday;
     private double _daysBefore;
     private bool _requireThresholdForPeriod;
+    private bool _requireThresholdForWeekly;
 
     public NotificationRuleViewModel(
         string id,
@@ -45,6 +46,7 @@ public sealed class NotificationRuleViewModel : ObservableObject
         _weekday = NormalizeWeekday(setting?.Weekday ?? Monday);
         _daysBefore = ClampWhole(setting?.DaysBefore ?? 1, 0, 30);
         _requireThresholdForPeriod = setting?.RequireThresholdForPeriod ?? false;
+        _requireThresholdForWeekly = setting?.RequireThresholdForWeekly ?? true;
     }
 
     public static IReadOnlyList<string> CategoryOptions { get; } = new[] { DailyCategory, WeeklyCategory, PeriodCategory };
@@ -81,6 +83,8 @@ public sealed class NotificationRuleViewModel : ObservableObject
     public Visibility WeeklyRuleVisibility => Category == WeeklyCategory ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility PeriodRuleVisibility => Category == PeriodCategory ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility WeeklyThresholdVisibility => RequireThresholdForWeekly ? Visibility.Visible : Visibility.Collapsed;
 
     public bool Enabled
     {
@@ -150,6 +154,18 @@ public sealed class NotificationRuleViewModel : ObservableObject
         set => SetProperty(ref _requireThresholdForPeriod, value);
     }
 
+    public bool RequireThresholdForWeekly
+    {
+        get => _requireThresholdForWeekly;
+        set
+        {
+            if (SetProperty(ref _requireThresholdForWeekly, value))
+            {
+                OnPropertyChanged(nameof(WeeklyThresholdVisibility));
+            }
+        }
+    }
+
     public NotificationRuleSetting ToSetting()
     {
         return new NotificationRuleSetting(
@@ -164,7 +180,8 @@ public sealed class NotificationRuleViewModel : ObservableObject
             Minute,
             Weekday,
             DaysBefore,
-            RequireThresholdForPeriod);
+            RequireThresholdForPeriod,
+            RequireThresholdForWeekly);
     }
 
     private static double ClampWhole(double value, double minimum, double maximum)

@@ -12,4 +12,5 @@ public sealed record NotificationRuleSetting(
     double Minute,
     string Weekday,
     double DaysBefore,
-    bool RequireThresholdForPeriod);
+    bool RequireThresholdForPeriod,
+    bool RequireThresholdForWeekly = true);

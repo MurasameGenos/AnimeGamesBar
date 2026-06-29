@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using AnimeGamesBar.App.Models;
 using AnimeGamesBar.App.Services.Kuro;
 using AnimeGamesBar.App.Services.Notifications;
@@ -10,6 +11,8 @@ using AnimeGamesBar.App.Services.Startup;
 using AnimeGamesBar.App.Services.Tajiduo;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace AnimeGamesBar.App.ViewModels;
 
@@ -85,6 +88,14 @@ public sealed class MainViewModel : ObservableObject
     private bool _savedNotificationCooldownEnabled;
     private double _notificationCooldownMinutes = 60;
     private double _savedNotificationCooldownMinutes = 60;
+    private string _arknightsGamePath = string.Empty;
+    private string _arknightsScriptPath = string.Empty;
+    private string _endfieldGamePath = string.Empty;
+    private string _endfieldScriptPath = string.Empty;
+    private string _wutheringWavesGamePath = string.Empty;
+    private string _wutheringWavesScriptPath = string.Empty;
+    private string _yihuanGamePath = string.Empty;
+    private string _yihuanScriptPath = string.Empty;
     private IReadOnlyList<NotificationRuleSetting> _savedNotificationRuleSettings = Array.Empty<NotificationRuleSetting>();
 
     public MainViewModel(
@@ -128,6 +139,10 @@ public sealed class MainViewModel : ObservableObject
         SaveCredentialCommand = new AsyncCommand(SaveCredentialAsync);
         ClearCredentialCommand = new AsyncCommand(ClearCredentialAsync);
         StartLoginCommand = new AsyncCommand(StartLoginAsync);
+        LaunchGameCommand = new AsyncCommand(cancellationToken => LaunchConfiguredProgramAsync(launchScript: false, cancellationToken));
+        LaunchScriptCommand = new AsyncCommand(cancellationToken => LaunchConfiguredProgramAsync(launchScript: true, cancellationToken));
+        BrowseGamePathCommand = new AsyncCommand(cancellationToken => BrowseLaunchPathAsync(launchScript: false, cancellationToken));
+        BrowseScriptPathCommand = new AsyncCommand(cancellationToken => BrowseLaunchPathAsync(launchScript: true, cancellationToken));
         OpenSettingsCommand = new AsyncCommand(_ =>
         {
             IsSettingsPageOpen = true;
@@ -210,6 +225,14 @@ public sealed class MainViewModel : ObservableObject
     public AsyncCommand ClearCredentialCommand { get; }
 
     public AsyncCommand StartLoginCommand { get; }
+
+    public AsyncCommand LaunchGameCommand { get; }
+
+    public AsyncCommand LaunchScriptCommand { get; }
+
+    public AsyncCommand BrowseGamePathCommand { get; }
+
+    public AsyncCommand BrowseScriptPathCommand { get; }
 
     public AsyncCommand SelectArknightsCommand { get; }
 
@@ -610,6 +633,34 @@ public sealed class MainViewModel : ObservableObject
 
     public string SelectedGameTitle => GameTitle(_selectedGame);
 
+    public string LaunchGameButtonText => "\u542F\u52A8\u6E38\u620F";
+
+    public string LaunchScriptButtonText => "\u542F\u52A8\u811A\u672C";
+
+    public string SelectedGameLaunchPath
+    {
+        get => GetLaunchPath(_selectedGame, launchScript: false);
+        set
+        {
+            if (SetLaunchPath(_selectedGame, launchScript: false, value))
+            {
+                OnLaunchPathChanged();
+            }
+        }
+    }
+
+    public string SelectedScriptLaunchPath
+    {
+        get => GetLaunchPath(_selectedGame, launchScript: true);
+        set
+        {
+            if (SetLaunchPath(_selectedGame, launchScript: true, value))
+            {
+                OnLaunchPathChanged();
+            }
+        }
+    }
+
     public string AccountPanelSubtitle => _selectedGame switch
     {
         GameDashboardKind.Arknights => "\u7F57\u5FB7\u5C9B\u8D26\u53F7\u4E0E\u5237\u65B0\u8BBE\u7F6E",
@@ -909,6 +960,14 @@ public sealed class MainViewModel : ObservableObject
             NotificationCooldownMinutes = settings.NotificationCooldownMinutes;
             _savedNotificationCooldownEnabled = NotificationCooldownEnabled;
             _savedNotificationCooldownMinutes = NotificationCooldownMinutes;
+            _arknightsGamePath = settings.ArknightsGamePath;
+            _arknightsScriptPath = settings.ArknightsScriptPath;
+            _endfieldGamePath = settings.EndfieldGamePath;
+            _endfieldScriptPath = settings.EndfieldScriptPath;
+            _wutheringWavesGamePath = settings.WutheringWavesGamePath;
+            _wutheringWavesScriptPath = settings.WutheringWavesScriptPath;
+            _yihuanGamePath = settings.YihuanGamePath;
+            _yihuanScriptPath = settings.YihuanScriptPath;
             InitializeNotificationRules(settings.NotificationRules);
             StartWithWindows = settings.StartWithWindows || _startupService.IsEnabled();
             _arknightsAutoRefreshEnabled = settings.ArknightsAutoRefreshEnabled;
@@ -931,6 +990,8 @@ public sealed class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(WutheringWavesAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(YihuanAutoRefreshIntervalMinutes));
             OnPropertyChanged(nameof(DailyAutoSignSummary));
+            OnPropertyChanged(nameof(SelectedGameLaunchPath));
+            OnPropertyChanged(nameof(SelectedScriptLaunchPath));
             ConfigureNotificationChannels();
         }
         finally
@@ -972,6 +1033,14 @@ public sealed class MainViewModel : ObservableObject
                     ServerChanSendKey,
                     notificationCooldownEnabled ?? _savedNotificationCooldownEnabled,
                     notificationCooldownMinutes ?? _savedNotificationCooldownMinutes,
+                    _arknightsGamePath,
+                    _arknightsScriptPath,
+                    _endfieldGamePath,
+                    _endfieldScriptPath,
+                    _wutheringWavesGamePath,
+                    _wutheringWavesScriptPath,
+                    _yihuanGamePath,
+                    _yihuanScriptPath,
                     notificationRules ?? _savedNotificationRuleSettings),
                 CancellationToken.None);
             return true;
@@ -981,6 +1050,70 @@ public sealed class MainViewModel : ObservableObject
             SetStatus($"\u8BBE\u7F6E\u4FDD\u5B58\u5931\u8D25\uFF1A{ex.Message}", InfoBarSeverity.Warning);
             return false;
         }
+    }
+
+    private async Task BrowseLaunchPathAsync(bool launchScript, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (OwnerWindow is null)
+        {
+            SetStatus("\u65E0\u6CD5\u6253\u5F00\u6587\u4EF6\u9009\u62E9\u5668\uFF1A\u7A97\u53E3\u672A\u5C31\u7EEA\u3002", InfoBarSeverity.Warning);
+            return;
+        }
+
+        var picker = new FileOpenPicker
+        {
+            SuggestedStartLocation = PickerLocationId.Desktop
+        };
+        picker.FileTypeFilter.Add(".exe");
+        picker.FileTypeFilter.Add(".lnk");
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(OwnerWindow));
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is null)
+        {
+            return;
+        }
+
+        if (SetLaunchPath(_selectedGame, launchScript, file.Path))
+        {
+            OnLaunchPathChanged();
+        }
+    }
+
+    private Task LaunchConfiguredProgramAsync(bool launchScript, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var path = Environment.ExpandEnvironmentVariables(GetLaunchPath(_selectedGame, launchScript)).Trim();
+        var targetName = launchScript ? "\u811A\u672C" : SelectedGameTitle;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            SetStatus($"\u8BF7\u5148\u5728\u8BBE\u7F6E\u91CC\u914D\u7F6E{targetName}\u8DEF\u5F84\u3002", InfoBarSeverity.Warning);
+            return Task.CompletedTask;
+        }
+
+        if (!File.Exists(path))
+        {
+            SetStatus($"{targetName}\u8DEF\u5F84\u4E0D\u5B58\u5728\uFF1A{path}", InfoBarSeverity.Warning);
+            return Task.CompletedTask;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true,
+                WorkingDirectory = Path.GetDirectoryName(path) ?? Environment.CurrentDirectory
+            });
+            SetStatus($"\u5DF2\u542F\u52A8{targetName}\u3002", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"\u542F\u52A8{targetName}\u5931\u8D25\uFF1A{ex.Message}", InfoBarSeverity.Warning);
+        }
+
+        return Task.CompletedTask;
     }
 
     private async Task RefreshAsync(CancellationToken cancellationToken)
@@ -1904,13 +2037,17 @@ public sealed class MainViewModel : ObservableObject
         DateTimeOffset now)
     {
         if (ToDayOfWeek(rule.Weekday) != now.DayOfWeek ||
-            !IsTimeWindow(now, (int)rule.Hour, (int)rule.Minute, TimeSpan.FromMinutes(2)) ||
-            !Compare(metric.Current, rule.Operator, rule.Threshold))
+            !IsTimeWindow(now, (int)rule.Hour, (int)rule.Minute, TimeSpan.FromMinutes(2)))
         {
             return null;
         }
 
-        return $"weekly:{rule.Id}:{now.LocalDateTime:yyyyMMdd}:{rule.Hour:00}:{rule.Minute:00}";
+        if (rule.RequireThresholdForWeekly && !Compare(metric.Current, rule.Operator, rule.Threshold))
+        {
+            return null;
+        }
+
+        return $"weekly:{rule.Id}:{now.LocalDateTime:yyyyMMdd}:{rule.Hour:00}:{rule.Minute:00}:{rule.RequireThresholdForWeekly}";
     }
 
     private static string? TryCreatePeriodicNotificationKey(
@@ -1961,6 +2098,11 @@ public sealed class MainViewModel : ObservableObject
         if (rule.Category == "日常" && rule.UseScheduledTime)
         {
             timeText = $"{rule.Hour:00}:{rule.Minute:00}";
+        }
+
+        if (rule.Category == "周常" && !rule.RequireThresholdForWeekly)
+        {
+            return $"{timeText} 检查命中\n当前值 {valueText}";
         }
 
         return $"{timeText} 检查命中\n当前值 {valueText}，规则：{rule.Operator}{rule.Threshold:0}";
@@ -2163,6 +2305,42 @@ public sealed class MainViewModel : ObservableObject
         };
     }
 
+    private string GetLaunchPath(GameDashboardKind game, bool launchScript)
+    {
+        return game switch
+        {
+            GameDashboardKind.Arknights => launchScript ? _arknightsScriptPath : _arknightsGamePath,
+            GameDashboardKind.Endfield => launchScript ? _endfieldScriptPath : _endfieldGamePath,
+            GameDashboardKind.WutheringWaves => launchScript ? _wutheringWavesScriptPath : _wutheringWavesGamePath,
+            GameDashboardKind.Yihuan => launchScript ? _yihuanScriptPath : _yihuanGamePath,
+            _ => string.Empty
+        };
+    }
+
+    private bool SetLaunchPath(GameDashboardKind game, bool launchScript, string? value)
+    {
+        value = value?.Trim() ?? string.Empty;
+        return game switch
+        {
+            GameDashboardKind.Arknights when launchScript => SetProperty(ref _arknightsScriptPath, value, nameof(SelectedScriptLaunchPath)),
+            GameDashboardKind.Arknights => SetProperty(ref _arknightsGamePath, value, nameof(SelectedGameLaunchPath)),
+            GameDashboardKind.Endfield when launchScript => SetProperty(ref _endfieldScriptPath, value, nameof(SelectedScriptLaunchPath)),
+            GameDashboardKind.Endfield => SetProperty(ref _endfieldGamePath, value, nameof(SelectedGameLaunchPath)),
+            GameDashboardKind.WutheringWaves when launchScript => SetProperty(ref _wutheringWavesScriptPath, value, nameof(SelectedScriptLaunchPath)),
+            GameDashboardKind.WutheringWaves => SetProperty(ref _wutheringWavesGamePath, value, nameof(SelectedGameLaunchPath)),
+            GameDashboardKind.Yihuan when launchScript => SetProperty(ref _yihuanScriptPath, value, nameof(SelectedScriptLaunchPath)),
+            GameDashboardKind.Yihuan => SetProperty(ref _yihuanGamePath, value, nameof(SelectedGameLaunchPath)),
+            _ => false
+        };
+    }
+
+    private void OnLaunchPathChanged()
+    {
+        OnPropertyChanged(nameof(SelectedGameLaunchPath));
+        OnPropertyChanged(nameof(SelectedScriptLaunchPath));
+        _ = SaveSettingsAsync();
+    }
+
     private static double NormalizeAutoRefreshInterval(double value)
     {
         return Math.Clamp(double.IsNaN(value) || value <= 0 ? 5 : value, 1, 180);
@@ -2277,6 +2455,10 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(WutheringWavesDashboardVisibility));
         OnPropertyChanged(nameof(YihuanDashboardVisibility));
         OnPropertyChanged(nameof(SelectedGameTitle));
+        OnPropertyChanged(nameof(LaunchGameButtonText));
+        OnPropertyChanged(nameof(LaunchScriptButtonText));
+        OnPropertyChanged(nameof(SelectedGameLaunchPath));
+        OnPropertyChanged(nameof(SelectedScriptLaunchPath));
         OnPropertyChanged(nameof(AccountPanelSubtitle));
         OnPropertyChanged(nameof(CredFieldHeader));
         OnPropertyChanged(nameof(TokenFieldHeader));
