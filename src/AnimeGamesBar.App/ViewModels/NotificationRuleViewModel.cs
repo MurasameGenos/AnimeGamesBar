@@ -1,9 +1,17 @@
 using AnimeGamesBar.App.Services.Notifications;
+using Microsoft.UI.Xaml;
 
 namespace AnimeGamesBar.App.ViewModels;
 
 public sealed class NotificationRuleViewModel : ObservableObject
 {
+    private const string DailyCategory = "\u65E5\u5E38";
+    private const string WeeklyCategory = "\u5468\u5E38";
+    private const string PeriodCategory = "\u5468\u671F";
+    private const string GreaterThanOrEqual = "\u2265";
+    private const string LessThanOrEqual = "\u2264";
+    private const string Monday = "\u5468\u4E00";
+
     private bool _enabled;
     private string _category;
     private string _operator;
@@ -29,21 +37,30 @@ public sealed class NotificationRuleViewModel : ObservableObject
         MetricId = metricId;
         _enabled = setting?.Enabled ?? false;
         _category = NormalizeCategory(setting?.Category ?? defaultCategory);
-        _operator = NormalizeOperator(setting?.Operator ?? "≥");
+        _operator = NormalizeOperator(setting?.Operator ?? GreaterThanOrEqual);
         _threshold = Math.Max(0, setting?.Threshold ?? 0);
         _useScheduledTime = setting?.UseScheduledTime ?? false;
         _hour = ClampWhole(setting?.Hour ?? 9, 0, 23);
         _minute = ClampWhole(setting?.Minute ?? 0, 0, 59);
-        _weekday = NormalizeWeekday(setting?.Weekday ?? "周一");
+        _weekday = NormalizeWeekday(setting?.Weekday ?? Monday);
         _daysBefore = ClampWhole(setting?.DaysBefore ?? 1, 0, 30);
         _requireThresholdForPeriod = setting?.RequireThresholdForPeriod ?? false;
     }
 
-    public static IReadOnlyList<string> CategoryOptions { get; } = new[] { "日常", "周常", "周期" };
+    public static IReadOnlyList<string> CategoryOptions { get; } = new[] { DailyCategory, WeeklyCategory, PeriodCategory };
 
-    public static IReadOnlyList<string> OperatorOptions { get; } = new[] { "≥", ">", "≤", "<" };
+    public static IReadOnlyList<string> OperatorOptions { get; } = new[] { GreaterThanOrEqual, ">", LessThanOrEqual, "<" };
 
-    public static IReadOnlyList<string> WeekdayOptions { get; } = new[] { "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
+    public static IReadOnlyList<string> WeekdayOptions { get; } = new[]
+    {
+        Monday,
+        "\u5468\u4E8C",
+        "\u5468\u4E09",
+        "\u5468\u56DB",
+        "\u5468\u4E94",
+        "\u5468\u516D",
+        "\u5468\u65E5"
+    };
 
     public IReadOnlyList<string> CategoryItems => CategoryOptions;
 
@@ -59,6 +76,12 @@ public sealed class NotificationRuleViewModel : ObservableObject
 
     public string MetricId { get; }
 
+    public Visibility DailyRuleVisibility => Category == DailyCategory ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility WeeklyRuleVisibility => Category == WeeklyCategory ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility PeriodRuleVisibility => Category == PeriodCategory ? Visibility.Visible : Visibility.Collapsed;
+
     public bool Enabled
     {
         get => _enabled;
@@ -68,7 +91,15 @@ public sealed class NotificationRuleViewModel : ObservableObject
     public string Category
     {
         get => _category;
-        set => SetProperty(ref _category, NormalizeCategory(value));
+        set
+        {
+            if (SetProperty(ref _category, NormalizeCategory(value)))
+            {
+                OnPropertyChanged(nameof(DailyRuleVisibility));
+                OnPropertyChanged(nameof(WeeklyRuleVisibility));
+                OnPropertyChanged(nameof(PeriodRuleVisibility));
+            }
+        }
     }
 
     public string Operator
@@ -143,16 +174,16 @@ public sealed class NotificationRuleViewModel : ObservableObject
 
     private static string NormalizeCategory(string? value)
     {
-        return CategoryOptions.Contains(value) ? value! : "日常";
+        return CategoryOptions.Contains(value) ? value! : DailyCategory;
     }
 
     private static string NormalizeOperator(string? value)
     {
-        return OperatorOptions.Contains(value) ? value! : "≥";
+        return OperatorOptions.Contains(value) ? value! : GreaterThanOrEqual;
     }
 
     private static string NormalizeWeekday(string? value)
     {
-        return WeekdayOptions.Contains(value) ? value! : "周一";
+        return WeekdayOptions.Contains(value) ? value! : Monday;
     }
 }

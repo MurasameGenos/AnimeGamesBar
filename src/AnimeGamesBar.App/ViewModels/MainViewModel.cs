@@ -67,6 +67,7 @@ public sealed class MainViewModel : ObservableObject
     private double _wutheringWavesAutoRefreshIntervalMinutes = 5;
     private double _yihuanAutoRefreshIntervalMinutes = 5;
     private bool _isSettingsPageOpen;
+    private bool _isNotificationRulesPageOpen;
     private bool _useDarkTheme = true;
     private bool _autoSignEnabled = true;
     private bool _dailyAutoSignEnabled = true;
@@ -124,11 +125,23 @@ public sealed class MainViewModel : ObservableObject
         OpenSettingsCommand = new AsyncCommand(_ =>
         {
             IsSettingsPageOpen = true;
+            IsNotificationRulesPageOpen = false;
             return Task.CompletedTask;
         });
         CloseSettingsCommand = new AsyncCommand(_ =>
         {
             IsSettingsPageOpen = false;
+            IsNotificationRulesPageOpen = false;
+            return Task.CompletedTask;
+        });
+        OpenNotificationRulesSettingsCommand = new AsyncCommand(_ =>
+        {
+            IsNotificationRulesPageOpen = true;
+            return Task.CompletedTask;
+        });
+        CloseNotificationRulesSettingsCommand = new AsyncCommand(_ =>
+        {
+            IsNotificationRulesPageOpen = false;
             return Task.CompletedTask;
         });
         SelectArknightsCommand = new AsyncCommand(_ =>
@@ -202,6 +215,10 @@ public sealed class MainViewModel : ObservableObject
     public AsyncCommand OpenSettingsCommand { get; }
 
     public AsyncCommand CloseSettingsCommand { get; }
+
+    public AsyncCommand OpenNotificationRulesSettingsCommand { get; }
+
+    public AsyncCommand CloseNotificationRulesSettingsCommand { get; }
 
     public string Cred
     {
@@ -318,6 +335,8 @@ public sealed class MainViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(DashboardVisibility));
                 OnPropertyChanged(nameof(SettingsVisibility));
+                OnPropertyChanged(nameof(GeneralSettingsVisibility));
+                OnPropertyChanged(nameof(NotificationRulesSettingsVisibility));
             }
         }
     }
@@ -325,6 +344,27 @@ public sealed class MainViewModel : ObservableObject
     public Visibility DashboardVisibility => IsSettingsPageOpen ? Visibility.Collapsed : Visibility.Visible;
 
     public Visibility SettingsVisibility => IsSettingsPageOpen ? Visibility.Visible : Visibility.Collapsed;
+
+    public bool IsNotificationRulesPageOpen
+    {
+        get => _isNotificationRulesPageOpen;
+        set
+        {
+            if (SetProperty(ref _isNotificationRulesPageOpen, value))
+            {
+                OnPropertyChanged(nameof(GeneralSettingsVisibility));
+                OnPropertyChanged(nameof(NotificationRulesSettingsVisibility));
+            }
+        }
+    }
+
+    public Visibility GeneralSettingsVisibility => IsSettingsPageOpen && !IsNotificationRulesPageOpen
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+    public Visibility NotificationRulesSettingsVisibility => IsSettingsPageOpen && IsNotificationRulesPageOpen
+        ? Visibility.Visible
+        : Visibility.Collapsed;
 
     public bool UseDarkTheme
     {
