@@ -291,17 +291,57 @@
                             Header="{Binding CredFieldHeader}"
                             Text="{Binding Cred, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <PasswordBox
-                            x:Name="TokenBox"
-                            Header="{Binding TokenFieldHeader}"
-                            PasswordRevealMode="Peek"
-                            PasswordChanged="TokenBox_OnPasswordChanged" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <PasswordBox
+                                x:Name="TokenBox"
+                                Header="{Binding TokenFieldHeader}"
+                                PasswordChanged="TokenBox_OnPasswordChanged" />
+                            <TextBox
+                                x:Name="TokenTextBox"
+                                Header="{Binding TokenFieldHeader}"
+                                Text="{Binding Token, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                Visibility="Collapsed" />
+                            <Button
+                                x:Name="TokenRevealButton"
+                                Grid.Column="1"
+                                MinHeight="36"
+                                Margin="0,28,0,0"
+                                Padding="12,6"
+                                Background="{StaticResource AppButtonBrush}"
+                                Click="TokenRevealButton_OnClick"
+                                Content="&#x67E5;&#x770B;"
+                                Foreground="{StaticResource AppTextBrush}" />
+                        </Grid>
 
-                        <PasswordBox
-                            x:Name="CookieBox"
-                            Header="{Binding CookieFieldHeader}"
-                            PasswordRevealMode="Peek"
-                            PasswordChanged="CookieBox_OnPasswordChanged" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <PasswordBox
+                                x:Name="CookieBox"
+                                Header="{Binding CookieFieldHeader}"
+                                PasswordChanged="CookieBox_OnPasswordChanged" />
+                            <TextBox
+                                x:Name="CookieTextBox"
+                                Header="{Binding CookieFieldHeader}"
+                                Text="{Binding Cookie, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                Visibility="Collapsed" />
+                            <Button
+                                x:Name="CookieRevealButton"
+                                Grid.Column="1"
+                                MinHeight="36"
+                                Margin="0,28,0,0"
+                                Padding="12,6"
+                                Background="{StaticResource AppButtonBrush}"
+                                Click="CookieRevealButton_OnClick"
+                                Content="&#x67E5;&#x770B;"
+                                Foreground="{StaticResource AppTextBrush}" />
+                        </Grid>
 
                         <TextBox
                             Header="{Binding UserIdFieldHeader}"

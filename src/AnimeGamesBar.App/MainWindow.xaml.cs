@@ -17,6 +17,8 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _yihuanAutoRefreshTimer = new();
     private readonly DispatcherTimer _autoSignTimer = new();
     private readonly DispatcherTimer _notificationRuleTimer = new();
+    private bool _isTokenVisible;
+    private bool _isCookieVisible;
 
     public MainWindow(MainViewModel viewModel)
     {
@@ -49,9 +51,19 @@ public sealed partial class MainWindow : Window
             TokenBox.Password = ViewModel.Token;
         }
 
+        if (TokenTextBox.Text != ViewModel.Token)
+        {
+            TokenTextBox.Text = ViewModel.Token;
+        }
+
         if (CookieBox.Password != ViewModel.Cookie)
         {
             CookieBox.Password = ViewModel.Cookie;
+        }
+
+        if (CookieTextBox.Text != ViewModel.Cookie)
+        {
+            CookieTextBox.Text = ViewModel.Cookie;
         }
     }
 
@@ -63,6 +75,59 @@ public sealed partial class MainWindow : Window
     private void CookieBox_OnPasswordChanged(object sender, RoutedEventArgs e)
     {
         ViewModel.Cookie = CookieBox.Password;
+    }
+
+    private void TokenRevealButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _isTokenVisible = !_isTokenVisible;
+        SyncCredentialRevealState();
+    }
+
+    private void CookieRevealButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _isCookieVisible = !_isCookieVisible;
+        SyncCredentialRevealState();
+    }
+
+    private void SyncCredentialRevealState()
+    {
+        if (_isTokenVisible)
+        {
+            TokenTextBox.Text = ViewModel.Token;
+            TokenBox.Visibility = Visibility.Collapsed;
+            TokenTextBox.Visibility = Visibility.Visible;
+            TokenRevealButton.Content = "\u9690\u85CF";
+        }
+        else
+        {
+            if (TokenBox.Password != ViewModel.Token)
+            {
+                TokenBox.Password = ViewModel.Token;
+            }
+
+            TokenBox.Visibility = Visibility.Visible;
+            TokenTextBox.Visibility = Visibility.Collapsed;
+            TokenRevealButton.Content = "\u67E5\u770B";
+        }
+
+        if (_isCookieVisible)
+        {
+            CookieTextBox.Text = ViewModel.Cookie;
+            CookieBox.Visibility = Visibility.Collapsed;
+            CookieTextBox.Visibility = Visibility.Visible;
+            CookieRevealButton.Content = "\u9690\u85CF";
+        }
+        else
+        {
+            if (CookieBox.Password != ViewModel.Cookie)
+            {
+                CookieBox.Password = ViewModel.Cookie;
+            }
+
+            CookieBox.Visibility = Visibility.Visible;
+            CookieTextBox.Visibility = Visibility.Collapsed;
+            CookieRevealButton.Content = "\u67E5\u770B";
+        }
     }
 
     private void ViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
